@@ -27,17 +27,16 @@ USER user
 ENV HOME=/home/user
 RUN chmod 777 /home/user
 
-# Install Miniconda and Python 3.9
+# Install Miniconda and Python 3.8
 ENV CONDA_AUTO_UPDATE_CONDA=false
 ENV PATH=/home/user/miniconda/bin:$PATH
-RUN curl -sLo ~/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-py39_4.9.2-Linux-x86_64.sh \
+RUN curl -sLo ~/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
  && chmod +x ~/miniconda.sh \
  && ~/miniconda.sh -b -p ~/miniconda \
  && rm ~/miniconda.sh \
  && conda clean -ya
 
-# CUDA 10.1-specific steps
-RUN conda install -y -c pytorch torchvision torchaudio cpuonly -c pytorch \
+RUN conda install pytorch torchvision torchaudio cpuonly -c pytorch
 RUN conda install matplotlib
 RUN conda install scikit-learn
 RUN conda install pandas
