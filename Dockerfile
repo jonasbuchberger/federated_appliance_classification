@@ -38,11 +38,11 @@ RUN curl -sLo ~/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-py39
 
 # CUDA 10.1-specific steps
 RUN conda install -y -c pytorch torchvision torchaudio cpuonly -c pytorch \
-    matplotlib \
-    scikit-learn \
-    pandas \
-    jupyter \
-    && conda clean -ya
+RUN conda install matplotlib
+RUN conda install scikit-learn
+RUN conda install pandas
+RUN conda install jupyter
+RUN conda clean -ya
 
 RUN pip install tensorboard
 RUN pip install tensorboardX
