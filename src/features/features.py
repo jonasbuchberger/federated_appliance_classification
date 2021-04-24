@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import torchaudio
 
 
 class ACPower(object):
@@ -66,10 +67,13 @@ class DCS(object):
 
         current_peaks = torch.amax(current, dim=1)
 
-        assert (cycle_n == 50 or cycle_n == 90)
+        assert (cycle_n == 50 or cycle_n == 90 or cycle_n == 25)
         # Split for 0.5 and 1 second window
         if cycle_n == 50:
             current_peaks_A, current_peaks_B = torch.split(current_peaks, 25)
+
+        elif cycle_n == 25:
+            current_peaks_A, current_peaks_B = torch.split(current_peaks, 13)
 
         # Split for 1.5 second windows
         elif cycle_n == 90:
@@ -150,6 +154,59 @@ class AOT(object):
 
         return current_in, voltage_in, features, target
 
+class Spectrogram(object):
+
+    def __init__(self, n_fft):
+        self.torch_spec = torchaudio.transforms.Spectrogram(n_fft=n_fft, hop_length=1001)
+
+    def __call__(self, sample):
+        current_in, voltage_in, features, target = sample
+
+        spec = self.torch_spec(current_in)
+
+        if features is None:
+            features = spec
+        else:
+            features = torch.vstack([features, spec])
+
+        return current_in, voltage_in, features, target
+
+
+class MelSpectrogram(object):
+
+    def __init__(self, n_fft=2000, measurement_frequency=50000):
+        self.torch_mel_spec = torchaudio.transforms.MelSpectrogram(sample_rate=measurement_frequency, n_fft=n_fft, hop_length=1001)
+
+    def __call__(self, sample):
+        current_in, voltage_in, features, target = sample
+
+        mel_spec = self.torch_mel_spec(current_in)
+
+        if features is None:
+            features = mel_spec
+        else:
+            features = torch.vstack([features, mel_spec])
+
+        return current_in, voltage_in, features, target
+
+
+class MFCC(object):
+
+    def __init__(self, n_fft=2000, measurement_frequency=50000):
+        self.torch_mfcc = torchaudio.transforms.MFCC(sample_rate=measurement_frequency, n_mfcc=64, melkwargs={"n_fft": n_fft, "hop_length":1001})
+
+    def __call__(self, sample):
+        current_in, voltage_in, features, target = sample
+
+        mfcc = self.torch_mfcc(current_in)
+
+        if features is None:
+            features = mfcc
+        else:
+            features = torch.vstack([features, mfcc])
+
+        return current_in, voltage_in, features, target
+
 
 class RandomAugment(object):
 
@@ -211,7 +268,7 @@ if __name__ == '__main__':
     features = None
 
     from torchvision import transforms
-
+    """
     transform = transforms.Compose([
         RandomAugment(),
         ACPower(),
@@ -219,6 +276,17 @@ if __name__ == '__main__':
         COT(),
         AOT()
     ])
+    for i in range(0, 10):
+        x = transform((current, voltage, features, [0]))
+        print(x[2].shape)
+    """
+
+    transform = transforms.Compose([
+        RandomAugment(),
+        Spectrogram(),
+        MelSpectrogram(),
+        MFCC()
+   ])
     for i in range(0, 10):
         x = transform((current, voltage, features, [0]))
         print(x[2].shape)

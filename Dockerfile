@@ -28,6 +28,7 @@ RUN conda install matplotlib
 RUN conda install scikit-learn
 RUN conda install pandas
 RUN conda install -c conda-forge notebook
+RUN conda install h5py
 RUN conda clean -ya
 
 RUN pip install tensorboard
