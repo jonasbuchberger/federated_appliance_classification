@@ -25,7 +25,7 @@ class BlondConvNet(nn.Module):
             in_features = hidden_layer
             hidden_layer = int(hidden_layer * 1.5)
 
-        self.classifier = BlondNetMLP(seq_len, in_features, num_classes, max(1, int(num_layers/2)))
+        self.classifier = BlondNetMLP(seq_len, in_features, num_classes, max(1, int(num_layers / 2)))
 
     def forward(self, x):
         for layer in self.layers:
@@ -86,7 +86,7 @@ class BlondNetMLP(nn.Module):
         self.mlp = nn.Sequential()
         i = 0
         for i in range(1, num_layers):
-            self.mlp.add_module(f'Linear({i-1})', nn.Linear(in_size, int(in_size / 2)))
+            self.mlp.add_module(f'Linear({i - 1})', nn.Linear(in_size, int(in_size / 2)))
             in_size = int(in_size / 2)
 
         self.mlp.add_module(f'Linear({i})', nn.Linear(in_size, num_classes))
@@ -117,7 +117,7 @@ class BlondLstmNet(nn.Module):
         self.hidden_cell = (torch.zeros(num_layers, batch_size, hidden_layer_size),
                             torch.zeros(num_layers, batch_size, hidden_layer_size))
 
-        self.classifier = BlondNetMLP(seq_len, hidden_layer_size, num_classes, max(1, int(num_layers/2)))
+        self.classifier = BlondNetMLP(seq_len, hidden_layer_size, num_classes, max(1, int(num_layers / 2)))
 
     def forward(self, x):
         x = x.transpose(2, 1)

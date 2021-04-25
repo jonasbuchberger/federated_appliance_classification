@@ -35,6 +35,7 @@ RUN pip install tensorboard
 RUN pip install tensorboardX
 RUN pip install syft
 RUN pip install smt
+RUN pip install tqdm
 
 # Set the default command to python3
 CMD ["python3"]

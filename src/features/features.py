@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torchaudio
+torchaudio.set_audio_backend("soundfile")
 
 
 class ACPower(object):

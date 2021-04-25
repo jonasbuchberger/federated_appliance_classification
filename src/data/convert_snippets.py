@@ -37,7 +37,6 @@ APPLIANCE_TYPE = {
     'inateck UC2001': 'USB Charger'
 }
 
-
 def convert_dataset():
     df = pd.DataFrame(columns=['Medal', 'Socket', 'Appliance', 'Type', 'Timestamp'])
 
@@ -64,8 +63,8 @@ def convert_dataset():
             if 'appliance' in file:
                 file_path = os.path.join(ROOT_DIR, f'data/event_snippets/medal-{i}', file)
                 new_file_path = os.path.join(ROOT_DIR, f'data/event_snippets/medal-{i}', new_file)
-                os.rename(file_path, new_file_path)
-                pass
+                # os.rename(file_path, new_file_path)
+
 
             df.to_csv(os.path.join(ROOT_DIR, 'data/events_new.csv'))
 
