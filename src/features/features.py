@@ -156,7 +156,7 @@ class AOT(object):
 
 class Spectrogram(object):
 
-    def __init__(self, n_fft):
+    def __init__(self, n_fft=2000):
         self.torch_spec = torchaudio.transforms.Spectrogram(n_fft=n_fft, hop_length=1001)
 
     def __call__(self, sample):
@@ -179,6 +179,7 @@ class MelSpectrogram(object):
 
     def __call__(self, sample):
         current_in, voltage_in, features, target = sample
+        current_in = current_in.float()
 
         mel_spec = self.torch_mel_spec(current_in)
 
@@ -197,6 +198,7 @@ class MFCC(object):
 
     def __call__(self, sample):
         current_in, voltage_in, features, target = sample
+        current_in = current_in.float()
 
         mfcc = self.torch_mfcc(current_in)
 
