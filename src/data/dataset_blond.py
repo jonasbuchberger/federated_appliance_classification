@@ -1,10 +1,12 @@
-import h5py
 import os
+
+import h5py
 import pandas as pd
 import torch
-from src.utils import ROOT_DIR
 from torch.utils.data import Dataset
 from torch.utils.data import WeightedRandomSampler
+
+from src.utils import ROOT_DIR
 
 TYPE_CLASS = {
     'Battery Charger': 0,
@@ -35,10 +37,12 @@ class BLOND(Dataset):
         self.transform = transform
         self.path_to_data = path_to_data
         self.fold = fold
+        self.class_dict = class_dict
 
         self.labels = pd.read_csv(os.path.join(path_to_data, 'events_new.csv'), index_col=0)
         # Filter labels for classes in class_dict
-        self.labels = self.labels[self.labels['Type'].isin(class_dict.keys())]
+        self.labels = self.labels[self.labels['Type'].isin(self.class_dict.keys())]
+
         # Calculate class weights
         self.class_weights = len(self.labels) / self.labels['Type'].value_counts()
 
@@ -47,10 +51,14 @@ class BLOND(Dataset):
         # Add sample weights and class identifiers to labels dataframe
         for i, type_i in enumerate(self.class_weights.index):
             idx = (self.labels['Type'] == type_i).values
-            classes[idx] = class_dict[type_i]
+            classes[idx] = self.class_dict[type_i]
             sample_weights[idx] = self.class_weights[type_i]
         self.labels['Class'] = classes
         self.labels['Weight'] = sample_weights
+
+        # Fold dataset
+        if self.fold != 'all':
+            self.labels = self.labels[self.labels['fold'] == fold]
 
         # Filter for medal unit
         if medal_id is not None:
@@ -84,9 +92,10 @@ class BLOND(Dataset):
         sample = (current, voltage, None, class_num)
         if self.transform:
             _, _, features, _ = self.transform(sample)
+
             return features.float(), class_num
         else:
-            return current.float(), class_num
+            return current.unsqueeze(0).float(), class_num
 
 
 def get_datalaoders(path_to_data, batch_size, medal_id=None, features=None, class_dict=TYPE_CLASS):
@@ -114,7 +123,7 @@ def get_datalaoders(path_to_data, batch_size, medal_id=None, features=None, clas
                       medal_id=medal_id,
                       class_dict=class_dict)
     val_set = BLOND(path_to_data=path_to_data,
-                    fold='valid',
+                    fold='val',
                     transform=features['val'],
                     medal_id=medal_id,
                     class_dict=class_dict)
@@ -129,7 +138,6 @@ def get_datalaoders(path_to_data, batch_size, medal_id=None, features=None, clas
     train_loader = torch.utils.data.DataLoader(
         train_set,
         batch_size=batch_size,
-        pin_memory=True,
         num_workers=num_workers,
         sampler=sampler)
 
@@ -137,7 +145,6 @@ def get_datalaoders(path_to_data, batch_size, medal_id=None, features=None, clas
         val_set,
         batch_size=batch_size,
         shuffle=True,
-        pin_memory=True,
         num_workers=num_workers)
 
     test_loader = torch.utils.data.DataLoader(
@@ -158,8 +165,9 @@ if __name__ == '__main__':
     }
 
     path = os.path.join(ROOT_DIR, 'data')
-    #x = BLOND('train', path)[0]
-    t, _, _ = get_datalaoders(path, 40, class_dict=class_dict)
+    #print(len(BLOND('val', path)))
+
+    t, _, _ = get_datalaoders(path, 10, class_dict=class_dict)
 
     for sample in t:
         _, c = sample

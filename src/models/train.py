@@ -1,9 +1,11 @@
-import torch
 import os
-from src.utils import ROOT_DIR
+
+import torch
+from sklearn.metrics import precision_recall_fscore_support
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
-from sklearn.metrics import precision_recall_fscore_support
+
+from src.utils import ROOT_DIR
 
 
 def train(model, train_loader, val_loader, **config):
@@ -80,7 +82,7 @@ def train(model, train_loader, val_loader, **config):
 
         # Compute precision, recall F1-score and support for validations set
         epoch_precision, epoch_recall, epoch_f1, _ = precision_recall_fscore_support(y_target_list, y_pred_list,
-                                                                                            average="macro")
+                                                                                     average="macro")
 
         logger.add_scalar('Validation/Precision', epoch_precision, i_epoch)
         logger.add_scalar('Validation/Recall', epoch_recall, i_epoch)

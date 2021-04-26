@@ -8,11 +8,11 @@ Date: 20.10.2020
 Project: Federated Learning Toolbox
 Version: 0.0.1
 """
-import time
 import os
+import time
 
-from keystoneauth1.identity import v3
 from keystoneauth1 import session
+from keystoneauth1.identity import v3
 from novaclient import client
 from novaclient.exceptions import NotFound
 
@@ -21,6 +21,7 @@ class OpenStackConnector:
     """
     Functions to interact with an openstack interface.
     """
+
     def __init__(self,
                  username: str,
                  pwd: str):
@@ -98,7 +99,7 @@ class OpenStackConnector:
         return ip_address
 
     def instance_created(self,
-                            server_name: str) -> bool:
+                         server_name: str) -> bool:
         """
         Checks if a given server / instance exists on the connected
         open stack acoount.

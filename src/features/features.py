@@ -1,13 +1,12 @@
 import numpy as np
 import torch
 import torchaudio
-torchaudio.set_audio_backend("soundfile")
 
 
 class ACPower(object):
 
     def __init__(self, net_frequency=50, measurement_frequency=50000):
-        """Calculates Real, Apparent, Reactive and Distortion Power.
+        """ Calculates Real, Apparent, Reactive and Distortion Power.
 
         Args:
             net_frequency (int): Frequency of the net 50Hz or 60Hz
@@ -50,7 +49,7 @@ class ACPower(object):
 class DCS(object):
 
     def __init__(self, net_frequency=50, measurement_frequency=50000):
-        """Calculates Device Current Signature (DCS).
+        """ Calculates Device Current Signature (DCS).
 
         Args:
             net_frequency (int): Frequency of the net 50Hz or 60Hz
@@ -99,7 +98,7 @@ class DCS(object):
 class COT(object):
 
     def __init__(self, net_frequency=50, measurement_frequency=50000):
-        """Calculates Current Over Time (COT).
+        """ Calculates Current Over Time (COT).
 
         Args:
             net_frequency (int): Frequency of the net 50Hz or 60Hz
@@ -117,7 +116,7 @@ class COT(object):
         current_rms = torch.sqrt(torch.mean(current ** 2, dim=1))
 
         if features is None:
-            features = current_rms
+            features = current_rms.unsqueeze(0)
         else:
             features = torch.vstack([features, current_rms])
 
@@ -127,7 +126,7 @@ class COT(object):
 class AOT(object):
 
     def __init__(self, net_frequency=50, measurement_frequency=50000):
-        """Calculates Admittance Over Time (AOT).
+        """ Calculates Admittance Over Time (AOT).
 
         Args:
             net_frequency (int): Frequency of the net 50Hz or 60Hz
@@ -149,15 +148,21 @@ class AOT(object):
         aot = current_rms / voltage_rms
 
         if features is None:
-            features = aot
+            features = aot.unsqueeze(0)
         else:
             features = torch.vstack([features, aot])
 
         return current_in, voltage_in, features, target
 
+
 class Spectrogram(object):
 
     def __init__(self, n_fft=2000):
+        """ Calculates the Mel Spectrogram of an event.
+
+        Args:
+            n_fft: Size of FFT, creates n_fft // 2 + 1 bins.
+        """
         self.torch_spec = torchaudio.transforms.Spectrogram(n_fft=n_fft, hop_length=1001)
 
     def __call__(self, sample):
@@ -176,7 +181,14 @@ class Spectrogram(object):
 class MelSpectrogram(object):
 
     def __init__(self, n_fft=2000, measurement_frequency=50000):
-        self.torch_mel_spec = torchaudio.transforms.MelSpectrogram(sample_rate=measurement_frequency, n_fft=n_fft, hop_length=1001)
+        """ Calculates the Mel Spectrogram of an event.
+
+        Args:
+            n_fft: Size of FFT, creates n_fft // 2 + 1 bins.
+            measurement_frequency (int): Frequency of the measurements
+        """
+        self.torch_mel_spec = torchaudio.transforms.MelSpectrogram(sample_rate=measurement_frequency, n_fft=n_fft,
+                                                                   hop_length=1001)
 
     def __call__(self, sample):
         current_in, voltage_in, features, target = sample
@@ -195,7 +207,14 @@ class MelSpectrogram(object):
 class MFCC(object):
 
     def __init__(self, n_fft=2000, measurement_frequency=50000):
-        self.torch_mfcc = torchaudio.transforms.MFCC(sample_rate=measurement_frequency, n_mfcc=64, melkwargs={"n_fft": n_fft, "hop_length":1001})
+        """ Calculates the  Mel-frequency cepstrum coefficients of an event.
+
+        Args:
+            n_fft: Size of FFT, creates n_fft // 2 + 1 bins.
+            measurement_frequency (int): Frequency of the measurements
+        """
+        self.torch_mfcc = torchaudio.transforms.MFCC(sample_rate=measurement_frequency, n_mfcc=64,
+                                                     melkwargs={"n_fft": n_fft, "hop_length": 1001})
 
     def __call__(self, sample):
         current_in, voltage_in, features, target = sample
@@ -214,7 +233,7 @@ class MFCC(object):
 class RandomAugment(object):
 
     def __init__(self, net_frequency=50, measurement_frequency=50000, p_augment=0.8):
-        """Randomly applies an augmentation on the window. PhaseShift (Left, Right) or HalfPhaseFlip (Left, Right).
+        """ Randomly applies an augmentation on the window. PhaseShift (Left, Right) or HalfPhaseFlip (Left, Right).
 
         Args:
             net_frequency (int): Frequency of the net 50Hz or 60Hz
@@ -271,7 +290,8 @@ if __name__ == '__main__':
     features = None
 
     from torchvision import transforms
-    """
+
+
     transform = transforms.Compose([
         RandomAugment(),
         ACPower(),
@@ -282,14 +302,14 @@ if __name__ == '__main__':
     for i in range(0, 10):
         x = transform((current, voltage, features, [0]))
         print(x[2].shape)
-    """
+
 
     transform = transforms.Compose([
         RandomAugment(),
         Spectrogram(),
         MelSpectrogram(),
         MFCC()
-   ])
+    ])
     for i in range(0, 10):
         x = transform((current, voltage, features, [0]))
         print(x[2].shape)
