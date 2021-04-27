@@ -1,7 +1,7 @@
 import io
-import torch
 
 import matplotlib.pyplot as plt
+import torch
 from PIL import Image
 from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.metrics import confusion_matrix

@@ -1,13 +1,12 @@
-import torch
 import os
-import numpy as np
-import pandas as pd
-from tqdm import tqdm
-from src.utils import ROOT_DIR
-from src.visualization.metrics_table import metrics_table
-from src.visualization.confusion_matrix import tensor_confusion_matrix
 
+import torch
 from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
+
+from src.utils import ROOT_DIR
+from src.visualization.confusion_matrix import tensor_confusion_matrix
+from src.visualization.metrics_table import metrics_table
 
 
 def test(model, test_loader, **config):
@@ -24,8 +23,9 @@ def test(model, test_loader, **config):
 
     class_dict = test_loader.dataset.class_dict
     experiment_name = config['experiment_name']
-    log_path = f"{ROOT_DIR}/models/{experiment_name}"
-    logger = SummaryWriter(log_path)
+    run_name = config['run_name']
+    log_path = os.path.join(ROOT_DIR, 'models', experiment_name, run_name)
+    logger = SummaryWriter(log_path, filename_suffix='_test')
     os.makedirs(log_path, exist_ok=True)
 
     y_target_list = []

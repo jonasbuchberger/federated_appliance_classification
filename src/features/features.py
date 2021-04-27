@@ -13,6 +13,7 @@ class ACPower(object):
             measurement_frequency (int): Frequency of the measurements
         """
         self.cycle_length = int(measurement_frequency / net_frequency)
+        self.feature_dim = 4
 
     def __call__(self, sample):
 
@@ -56,6 +57,7 @@ class DCS(object):
             measurement_frequency (int): Frequency of the measurements
         """
         self.cycle_length = int(measurement_frequency / net_frequency)
+        self.feature_dim = 1
 
     def __call__(self, sample):
 
@@ -105,6 +107,7 @@ class COT(object):
             measurement_frequency (int): Frequency of the measurements
         """
         self.cycle_length = int(measurement_frequency / net_frequency)
+        self.feature_dim = 1
 
     def __call__(self, sample):
         current_in, voltage_in, features, target = sample
@@ -133,6 +136,7 @@ class AOT(object):
             measurement_frequency (int): Frequency of the measurements
         """
         self.cycle_length = int(measurement_frequency / net_frequency)
+        self.feature_dim = 1
 
     def __call__(self, sample):
         current_in, voltage_in, features, target = sample
@@ -163,7 +167,8 @@ class Spectrogram(object):
         Args:
             n_fft: Size of FFT, creates n_fft // 2 + 1 bins.
         """
-        self.torch_spec = torchaudio.transforms.Spectrogram(n_fft=n_fft, hop_length=1001)
+        self.torch_spec = torchaudio.transforms.Spectrogram(n_fft=n_fft, hop_length=int((n_fft / 2) + 1))
+        self.feature_dim = self.torch_spec.hop_length
 
     def __call__(self, sample):
         current_in, voltage_in, features, target = sample
@@ -188,7 +193,8 @@ class MelSpectrogram(object):
             measurement_frequency (int): Frequency of the measurements
         """
         self.torch_mel_spec = torchaudio.transforms.MelSpectrogram(sample_rate=measurement_frequency, n_fft=n_fft,
-                                                                   hop_length=1001)
+                                                                   hop_length=int((n_fft / 2) + 1))
+        self.feature_dim = self.torch_mel_spec.n_mels
 
     def __call__(self, sample):
         current_in, voltage_in, features, target = sample
@@ -214,7 +220,8 @@ class MFCC(object):
             measurement_frequency (int): Frequency of the measurements
         """
         self.torch_mfcc = torchaudio.transforms.MFCC(sample_rate=measurement_frequency, n_mfcc=64,
-                                                     melkwargs={"n_fft": n_fft, "hop_length": 1001})
+                                                     melkwargs={"n_fft": n_fft, "hop_length": int((n_fft / 2) + 1)})
+        self.feature_dim = self.torch_mfcc.n_mfcc
 
     def __call__(self, sample):
         current_in, voltage_in, features, target = sample
@@ -232,23 +239,26 @@ class MFCC(object):
 
 class RandomAugment(object):
 
-    def __init__(self, net_frequency=50, measurement_frequency=50000, p_augment=0.8):
+    def __init__(self, net_frequency=50, measurement_frequency=50000, p=0.8):
         """ Randomly applies an augmentation on the window. PhaseShift (Left, Right) or HalfPhaseFlip (Left, Right).
 
         Args:
             net_frequency (int): Frequency of the net 50Hz or 60Hz
             measurement_frequency (int): Frequency of the measurements
-            p_augment (float): Probability of an augmentation being applied on the window
+            p (float): Probability of an augmentation being applied on the window
         """
         self.cycle_length = int(measurement_frequency / net_frequency)
-        self.p_augment = p_augment
+        self.p = p
+        self.feature_dim = 0
 
     def __call__(self, sample):
 
         current, voltage, features, target = sample
 
-        i = int(4 / self.p_augment)
-        augment_i = (torch.randint(i, (1,))).item()
+        augment_i = -1
+        if self.p > 0:
+            i = int(4 / self.p)
+            augment_i = (torch.randint(i, (1,))).item()
 
         idx_0 = self.cycle_length
         idx_1 = self.cycle_length * 2
@@ -285,12 +295,11 @@ class RandomAugment(object):
 
 if __name__ == '__main__':
 
-    current = torch.rand(52000)
-    voltage = torch.rand(52000)
+    current = torch.rand(25000)
+    voltage = torch.rand(25000)
     features = None
 
     from torchvision import transforms
-
 
     transform = transforms.Compose([
         RandomAugment(),
@@ -302,7 +311,6 @@ if __name__ == '__main__':
     for i in range(0, 10):
         x = transform((current, voltage, features, [0]))
         print(x[2].shape)
-
 
     transform = transforms.Compose([
         RandomAugment(),

@@ -1,11 +1,12 @@
+import json
 import os
 
 import torch
 from sklearn.metrics import precision_recall_fscore_support
-from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from src.utils import ROOT_DIR
+from src.utils import SummaryWriter
 
 
 def train(model, train_loader, val_loader, **config):
@@ -25,18 +26,20 @@ def train(model, train_loader, val_loader, **config):
     # Getting parameters from train_config
     early_stopping = config.get('early_stopping', None)
     experiment_name = config['experiment_name']
+    run_name = config['run_name']
     num_epochs = config['num_epochs']
     criterion = config['criterion']
     optim = config['optim'](model.parameters(), **config['optim_kwargs'])
     scheduler = config['scheduler'](optim, **config['scheduler_kwargs'])
 
-    log_path = f"{ROOT_DIR}/models/{experiment_name}"
-    logger = SummaryWriter(log_path)
+    log_path = os.path.join(ROOT_DIR, 'models', experiment_name, run_name)
+    logger = SummaryWriter(log_path, filename_suffix='_train')
     os.makedirs(log_path, exist_ok=True)
 
     num_train_batches = len(train_loader)
     num_val_batches = len(val_loader)
 
+    best_acc = None
     best_f1 = None
     early_stopping_val_loss = None
 
@@ -94,6 +97,7 @@ def train(model, train_loader, val_loader, **config):
         if best_f1 is None or best_f1 < epoch_f1:
             torch.save(model.state_dict(), f"{log_path}/model.pth")
             best_f1 = epoch_f1
+            best_acc = epoch_val_accuracy
 
         if early_stopping is not None and i_epoch % early_stopping == 0:
             if early_stopping_val_loss is not None and early_stopping_val_loss < epoch_val_loss:
@@ -104,6 +108,22 @@ def train(model, train_loader, val_loader, **config):
 
         scheduler.step(epoch_f1)
 
+    logger.add_graph(model.cpu(), x[0].unsqueeze(0))
+    logger.add_hparams({'lr': config['optim_kwargs']['lr'],
+                        'weight_decay': config['optim_kwargs']['weight_decay'],
+                        'batch_size': config['batch_size'],
+                        'num_layers': config['model_kwargs']['num_layers'],
+                        'hidden_layer': config['model_kwargs']['hidden_layer']},
+                       {'Hparam/Accuracy': best_acc,
+                        'Hparam/F1': best_f1})
     logger.close()
 
-    return f"{log_path}/model.pth"
+    # Save train parameters and model architecture
+    with open(os.path.join(log_path, 'params.json'), 'w') as text_file:
+        json.dump(config, text_file, indent=4, default=str)
+    text_file.close()
+    with open(os.path.join(log_path, 'model.txt'), 'w') as text_file:
+        text_file.write(str(model))
+    text_file.close()
+
+    return os.path.join(log_path, 'model.pth')

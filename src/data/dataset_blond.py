@@ -5,6 +5,7 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 from torch.utils.data import WeightedRandomSampler
+from torchvision.transforms import Compose
 
 from src.utils import ROOT_DIR
 
@@ -98,7 +99,6 @@ class BLOND(Dataset):
             return sample
 
 
-
 def get_datalaoders(path_to_data, batch_size, medal_id=None, features=None, class_dict=TYPE_CLASS):
     """ Returns data loaders
 
@@ -107,7 +107,7 @@ def get_datalaoders(path_to_data, batch_size, medal_id=None, features=None, clas
         batch_size (int): Size of batches
         medal_id (int): 1-14 for single medal or None for all
         features (dict): Dict containing the train and val/test features
-        class_dict (dict):
+        class_dict (dict): Dict of type class mapping
 
     Returns:
         train_loader (torch.utils.data.DataLoader)
@@ -120,17 +120,17 @@ def get_datalaoders(path_to_data, batch_size, medal_id=None, features=None, clas
 
     train_set = BLOND(path_to_data=path_to_data,
                       fold='train',
-                      transform=features['train'],
+                      transform=Compose(features['train']),
                       medal_id=medal_id,
                       class_dict=class_dict)
     val_set = BLOND(path_to_data=path_to_data,
                     fold='val',
-                    transform=features['val'],
+                    transform=Compose(features['val']),
                     medal_id=medal_id,
                     class_dict=class_dict)
     test_set = BLOND(path_to_data=path_to_data,
                      fold='test',
-                     transform=features['val'],
+                     transform=Compose(features['val']),
                      medal_id=medal_id,
                      class_dict=class_dict)
 
@@ -166,7 +166,7 @@ if __name__ == '__main__':
     }
 
     path = os.path.join(ROOT_DIR, 'data')
-    #print(len(BLOND('val', path)))
+    # print(len(BLOND('val', path)))
 
     t, _, _ = get_datalaoders(path, 10, class_dict=class_dict)
 

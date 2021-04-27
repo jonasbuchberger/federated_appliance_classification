@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
-from sklearn.metrics import precision_recall_fscore_support
-from sklearn.metrics import confusion_matrix
 from sklearn.metrics import accuracy_score
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import precision_recall_fscore_support
 
 
 def metrics_table(y_true, y_pred, class_dict):

@@ -4,26 +4,26 @@ import torch.nn as nn
 
 class BlondConvNet(nn.Module):
 
-    def __init__(self, in_features, seq_len, num_classes, num_layers=1, hidden_layer=10):
+    def __init__(self, in_features, seq_len, num_classes, hidden_layer_size=10, num_layers=1):
         """
         Args:
             in_features (int): Number of input features
             seq_len (int): Length of input series
             num_classes (int): Number of targets
+            hidden_layer_size (int): Size of first hidden layer
             num_layers (int): Number of stacked layer blocks
-            hidden_layer (int): Size of first hidden layer
         """
         super(BlondConvNet, self).__init__()
 
         self.layers = nn.ModuleList()
         for i in range(0, num_layers):
-            layer = BlondConvNetLayer(in_features, seq_len, hidden_layer)
+            layer = BlondConvNetLayer(in_features, seq_len, hidden_layer_size)
             self.layers.append(layer)
 
             # Assign values for next layer
             seq_len = layer.seq_len
-            in_features = hidden_layer
-            hidden_layer = int(hidden_layer * 1.5)
+            in_features = hidden_layer_size
+            hidden_layer_size = int(hidden_layer_size * 1.5)
 
         self.classifier = BlondNetMLP(seq_len, in_features, num_classes, max(1, int(num_layers / 2)))
 
