@@ -32,7 +32,7 @@ class BLOND(Dataset):
             path_to_data (str): Path to the data folder with the events.csv
             transform (torchvision.transform): Transforms to apply on the current wave
             medal_id (int): 1-14 for single medal or None for all
-            class_dict: Dict with the desired classes to use for training
+            class_dict (dict): Dict with the desired classes to use for training
         """
         self.transform = transform
         self.path_to_data = path_to_data
@@ -87,15 +87,16 @@ class BLOND(Dataset):
         window = data[lower + idx: upper + idx]
         """
 
-        # Apply feature transform on current, if no transform applied return current
+        # Apply feature transform on current/voltage, if no transform applied return (current, voltage, None, class)
         class_num = int(row['Class'])
+
         sample = (current, voltage, None, class_num)
         if self.transform:
             _, _, features, _ = self.transform(sample)
-
             return features.float(), class_num
         else:
-            return current.unsqueeze(0).float(), class_num
+            return sample
+
 
 
 def get_datalaoders(path_to_data, batch_size, medal_id=None, features=None, class_dict=TYPE_CLASS):

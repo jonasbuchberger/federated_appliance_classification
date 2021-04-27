@@ -88,7 +88,7 @@ class DCS(object):
         device_current_signature = current_peaks - mean_steady_peak_A
 
         if features is None:
-            features = device_current_signature
+            features = device_current_signature.unsqueeze(0)
         else:
             features = torch.vstack([features, device_current_signature])
 
