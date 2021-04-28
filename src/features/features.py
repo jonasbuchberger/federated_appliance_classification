@@ -300,7 +300,7 @@ if __name__ == '__main__':
     features = None
 
     from torchvision import transforms
-
+    """
     transform = transforms.Compose([
         RandomAugment(),
         ACPower(),
@@ -311,7 +311,7 @@ if __name__ == '__main__':
     for i in range(0, 10):
         x = transform((current, voltage, features, [0]))
         print(x[2].shape)
-
+    """
     transform = transforms.Compose([
         RandomAugment(),
         Spectrogram(),

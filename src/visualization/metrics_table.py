@@ -6,6 +6,16 @@ from sklearn.metrics import precision_recall_fscore_support
 
 
 def metrics_table(y_true, y_pred, class_dict):
+    """ Creates dataframe with all metrics for each appliance and also the mean
+
+    Args:
+        y_true (list): List of true labels
+        y_pred (list): List of predicted labels
+        class_dict (dict):
+
+    Returns:
+        (pd.Dataframe): Dataframe with metrics
+    """
     class_dict_values = list(class_dict.values())
     class_dict_keys = list(class_dict.keys())
 

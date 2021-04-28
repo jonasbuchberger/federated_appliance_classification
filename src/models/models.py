@@ -111,17 +111,24 @@ class BlondLstmNet(nn.Module):
         """
         super(BlondLstmNet, self).__init__()
 
+        self.num_layers = num_layers
+        self.hidden_layer_size = hidden_layer_size
+
         self.lstm = nn.LSTM(in_features, hidden_layer_size, dropout=0, num_layers=num_layers,
                             batch_first=True)
 
-        self.hidden_cell = (torch.zeros(num_layers, batch_size, hidden_layer_size),
-                            torch.zeros(num_layers, batch_size, hidden_layer_size))
+        #self.hidden_cell = (torch.zeros(num_layers, batch_size, hidden_layer_size).requires_grad_(),
+        #                    torch.zeros(num_layers, batch_size, hidden_layer_size).requires_grad_())
 
         self.classifier = BlondNetMLP(seq_len, hidden_layer_size, num_classes, max(1, int(num_layers / 2)))
 
     def forward(self, x):
+
+        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_layer_size).requires_grad_()
+        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_layer_size).requires_grad_()
+
         x = x.transpose(2, 1)
-        x, self.hidden_cell = self.lstm(x, self.hidden_cell)
+        x, _ = self.lstm(x, (h0.detach(), c0.detach()))
         x = x.reshape(x.size(0), -1)
         x = self.classifier(x)
 
