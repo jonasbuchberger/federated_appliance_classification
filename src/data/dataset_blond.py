@@ -75,8 +75,10 @@ class BLOND(Dataset):
         f = h5py.File(os.path.join(path, file_name), 'r')
 
         # Cut length of measurement window
-        current = torch.as_tensor(f['data']['block0_values'][:, 1])[300:][:25000]
-        voltage = torch.as_tensor(f['data']['block0_values'][:, 0])[300:][:25000]
+        # current = torch.as_tensor(f['data']['block0_values'][:, 1])[300:][:25000]
+        # voltage = torch.as_tensor(f['data']['block0_values'][:, 0])[300:][:25000]
+        current = torch.as_tensor(f['data']['block0_values'][:, 1])[:25472]
+        voltage = torch.as_tensor(f['data']['block0_values'][:, 0])[:25472]
 
         """
         # Shifts event widnow to start with a new cycle
@@ -158,6 +160,8 @@ def get_datalaoders(path_to_data, batch_size, medal_id=None, features=None, clas
 
 
 if __name__ == '__main__':
+
+    BLOND()
 
     class_dict = {
         'Laptop': 0,

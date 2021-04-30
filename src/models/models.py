@@ -4,26 +4,26 @@ import torch.nn as nn
 
 class BlondConvNet(nn.Module):
 
-    def __init__(self, in_features, seq_len, num_classes, hidden_layer_size=10, num_layers=1):
+    def __init__(self, in_features, seq_len, num_classes, out_features=10, num_layers=1):
         """
         Args:
             in_features (int): Number of input features
             seq_len (int): Length of input series
             num_classes (int): Number of targets
-            hidden_layer_size (int): Size of first hidden layer
+            out_features (int): Size of first out_channels of convolutional block
             num_layers (int): Number of stacked layer blocks
         """
         super(BlondConvNet, self).__init__()
 
         self.layers = nn.ModuleList()
         for i in range(0, num_layers):
-            layer = BlondConvNetLayer(in_features, seq_len, hidden_layer_size)
+            layer = BlondConvNetLayer(in_features, seq_len, out_features)
             self.layers.append(layer)
 
             # Assign values for next layer
             seq_len = layer.seq_len
-            in_features = hidden_layer_size
-            hidden_layer_size = int(hidden_layer_size * 1.5)
+            in_features = out_features
+            out_features = int(out_features * 1.5)
 
         self.classifier = BlondNetMLP(seq_len, in_features, num_classes, max(1, int(num_layers / 2)))
 
@@ -38,17 +38,17 @@ class BlondConvNet(nn.Module):
 
 class BlondConvNetLayer(nn.Module):
 
-    def __init__(self, in_features, seq_len, hidden_layer):
+    def __init__(self, in_features, seq_len, out_features):
         """
         Args:
             in_features (int): Number of input features
             seq_len (int): Length of input series
-            hidden_layer (int): Size of hidden layer
+            out_features (int): Size of hidden layer
         """
         super(BlondConvNetLayer, self).__init__()
         self.layer = nn.Sequential(
-            nn.Conv1d(in_features, hidden_layer, kernel_size=2, stride=1, padding=1),
-            nn.BatchNorm1d(hidden_layer),
+            nn.Conv1d(in_features, out_features, kernel_size=2, stride=1, padding=1),
+            nn.BatchNorm1d(out_features),
             nn.MaxPool1d(kernel_size=2, padding=1),
             nn.ReLU())
 
@@ -99,13 +99,12 @@ class BlondNetMLP(nn.Module):
 
 class BlondLstmNet(nn.Module):
 
-    def __init__(self, in_features, seq_len, num_classes, batch_size, hidden_layer_size=15, num_layers=1):
+    def __init__(self, in_features, seq_len, num_classes, hidden_layer_size=15, num_layers=1):
         """
         Args:
             in_features (int): Number of input features
             seq_len (int): Length of input series
             num_classes(int): Number of targets
-            batch_size (int: Number of samples in one batch
             hidden_layer_size (int): Size of hidden layers
             num_layers (int): Number of LSTM layers
         """
@@ -116,9 +115,6 @@ class BlondLstmNet(nn.Module):
 
         self.lstm = nn.LSTM(in_features, hidden_layer_size, dropout=0, num_layers=num_layers,
                             batch_first=True)
-
-        #self.hidden_cell = (torch.zeros(num_layers, batch_size, hidden_layer_size).requires_grad_(),
-        #                    torch.zeros(num_layers, batch_size, hidden_layer_size).requires_grad_())
 
         self.classifier = BlondNetMLP(seq_len, hidden_layer_size, num_classes, max(1, int(num_layers / 2)))
 

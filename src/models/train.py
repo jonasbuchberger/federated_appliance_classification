@@ -113,7 +113,7 @@ def train(model, train_loader, val_loader, **config):
                         'weight_decay': config['optim_kwargs']['weight_decay'],
                         'batch_size': config['batch_size'],
                         'num_layers': config['model_kwargs']['num_layers'],
-                        'hidden_layer': config['model_kwargs']['hidden_layer']},
+                        'start_size': config['model_kwargs']['start_size']},
                        {'Hparam/Accuracy': best_acc,
                         'Hparam/F1': best_f1})
     logger.close()
