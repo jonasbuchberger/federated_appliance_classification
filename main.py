@@ -1,19 +1,21 @@
 import os
 import warnings
+import numpy as np
 
+from copy import deepcopy
 from src.data.dataset_blond import get_datalaoders
 from src.models.models import BlondConvNet, BlondLstmNet
 from src.models.test import test
 from src.models.train import train
 from src.utils import ROOT_DIR
-from src.models.design_of_experiment import lh, to_dict
+from src.models.design_of_experiment import lh
 
 warnings.filterwarnings("ignore", category=UserWarning)
 from src.features.features import *
 
 
 def run_config(path_to_data, **config):
-    """
+    """ Trains and tests a single model specified with the config.
 
     Args:
         **config:
@@ -30,7 +32,7 @@ def run_config(path_to_data, **config):
 
     # Create experiment name
     if config['experiment_name'] is None:
-        config['experiment_name'] = f"{config['model_kwargs']['name']}_" \
+        config['experiment_name'] = f"test_{config['model_kwargs']['name']}_" \
                                     f"{config['optim'].__name__}_" \
                                     f"{config['criterion'].__class__.__name__}_" \
                                     f"CLASS_{len(config['class_dict'].keys())}_" \
@@ -46,8 +48,10 @@ def run_config(path_to_data, **config):
         config['run_name'] = ''
 
     # Create datalaoders
-    train_loader, val_loader, test_loader = get_datalaoders(path_to_data, config['batch_size'], features=features,
-                                                            class_dict=class_dict)
+    train_loader, val_loader, test_loader = get_datalaoders(path_to_data,
+                                                            config['batch_size'],
+                                                            features=config['features'],
+                                                            class_dict=config['class_dict'])
 
     # Initialize model
     if config['model_kwargs']['name'] == 'CNN1D':
@@ -65,11 +69,75 @@ def run_config(path_to_data, **config):
     else:
         print(f'Unsupported model: {config["model"]["name"]}')
 
-    trained_model = train(model, train_loader, val_loader, **config)
+    trained_model, best_f1 = train(model, train_loader, val_loader, **config)
 
     model.load_state_dict(torch.load(trained_model))
 
     test(model, test_loader, **config)
+
+    return best_f1
+
+
+def run_experiment(path_to_data, num_experiments=6, **config):
+    """ Automatically runs a forward chaining with all features.
+        Runs num_experiments experiments sampled by Optimal Latin HyperCube per feature chain.
+
+    Args:
+        path_to_data:
+        num_experiments:
+        **config:
+    """
+    measurement_frequency = 6400
+    # List of all features to test
+    feature_list = [ACPower(measurement_frequency=measurement_frequency),
+                    COT(measurement_frequency=measurement_frequency),
+                    AOT(measurement_frequency=measurement_frequency),
+                    DCS(measurement_frequency=measurement_frequency),
+                    Spectrogram(measurement_frequency=measurement_frequency),
+                    MelSpectrogram(measurement_frequency=measurement_frequency),
+                    MFCC(measurement_frequency=measurement_frequency)]
+
+    # Starting dict to build up feature chain
+    best_feature_dict = {
+        'train': [RandomAugment(measurement_frequency=6400)],
+        'val': [RandomAugment(measurement_frequency=6400, p=0)]
+    }
+
+    best_feature_f1 = 0
+    for _ in range(0, 100):
+        run_f1_array = np.zeros(len(feature_list))
+
+        # Runs a hyper parameter search for given feature combinations
+        for j, feature in enumerate(feature_list):
+            feature_dict_tmp = deepcopy(best_feature_dict)
+            feature_dict_tmp['train'].append(feature)
+            feature_dict_tmp['val'].append(feature)
+            config['features'] = feature_dict_tmp
+
+            # lh([lr, weight_decay, num_layers, start_size], num_exp)
+            experiments = lh([[0.001, 0.1], [0, 0.001], [1, 4], [10, 30]], num_experiments)
+            best_run_f1 = 0
+            for i in range(0, experiments.shape[0]):
+                config['optim_kwargs']['lr'] = np.round(experiments[i][0], 3)
+                config['optim_kwargs']['weight_decay'] = np.round(experiments[i][1], 3)
+                config['model_kwargs']['num_layers'] = int(np.round(experiments[i][2], 0))
+                config['model_kwargs']['start_size'] = int(np.round(experiments[i][3], 0))
+                f1 = run_config(path_to_data, **config)
+                if best_run_f1 < f1:
+                    best_run_f1 = f1
+
+            run_f1_array[j] = f1
+
+        best_feature = np.argmax(run_f1_array)
+        if best_feature_f1 < np.max(run_f1_array):
+            best_feature_f1 = np.max(run_f1_array)
+        else:
+            # Break when addition of new feature does not increase f1
+            break
+        # Add the feature that increased f1 by the most to best_feature_dict
+        best_feature_dict['train'].append(feature_list[best_feature])
+        best_feature_dict['val'].append(feature_list[best_feature])
+        feature_list.remove(feature_list[best_feature])
 
 
 if __name__ == '__main__':
@@ -81,27 +149,19 @@ if __name__ == '__main__':
         'USB Charger': 2
     }
     class_dict = {
-        'Battery Charger': 0,
-        'Daylight': 1,
-        'Dev Board': 2,
-        'Laptop': 3,
-        'Monitor': 4,
-        'PC': 5,
-        'Printer': 6,
-        'Projector': 7,
-        'Screen Motor': 8,
-        'USB Charger': 9
+        'Dev Board': 0,
+        'Laptop': 1,
+        'Monitor': 2,
+        'PC': 3,
+        'Printer': 4,
+        'Projector': 5,
+        'Screen Motor': 6,
+        'USB Charger': 7
     }
-
-    features = {
-        'train': [RandomAugment(measurement_frequency=6400), ACPower(measurement_frequency=6400)],
-        'val': [RandomAugment(measurement_frequency=6400, p=0), ACPower(measurement_frequency=6400)]
-    }
-
     config = {
         'batch_size': 100,
         'num_epochs': 20,
-        'seq_len': 197,
+        'seq_len': 190,
         'criterion': torch.nn.CrossEntropyLoss(),
         'optim': torch.optim.SGD,
         'optim_kwargs': {'lr': 0.001, 'weight_decay': 0.0},
@@ -109,17 +169,17 @@ if __name__ == '__main__':
         'scheduler_kwargs': {'factor': 0.1, 'patience': 3, 'mode': 'max'},
         'early_stopping': 5,
         'model_kwargs': {'name': 'CNN1D', 'num_layers': 2, 'start_size': 15},
-        'features': features,
         'class_dict': class_dict,
+        'features': None,
         'experiment_name': None
     }
-    # run_config(path_to_data, **config)
 
-    # lh([lr, weight_decay, num_layers, start_size], num_exp)
-    experiments = lh([[0.001, 0.1], [0, 0.001], [1, 4], [10, 30]], 6)
-    for i in range(0, experiments.shape[0]):
-        config['optim_kwargs']['lr'] = np.round(experiments[i][0], 3)
-        config['optim_kwargs']['weight_decay'] = np.round(experiments[i][1], 3)
-        config['model_kwargs']['num_layers'] = int(np.round(experiments[i][2], 0))
-        config['model_kwargs']['start_size'] = int(np.round(experiments[i][3], 0))
-        run_config(path_to_data, **config)
+    run_experiment(path_to_data, **config)
+
+    """
+    feature_dict = {
+        'train': [RandomAugment(measurement_frequency=6400)],
+        'val': [RandomAugment(measurement_frequency=6400, p=0)]
+    }
+    run_config(path_to_data, **config)
+    """

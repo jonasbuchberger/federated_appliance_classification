@@ -1,4 +1,3 @@
-import numpy as np
 import torch
 import torchaudio
 
@@ -69,25 +68,18 @@ class DCS(object):
 
         current_peaks = torch.amax(current, dim=1)
 
-        assert (cycle_n == 50 or cycle_n == 90 or cycle_n == 25)
-        # Split for 0.5 and 1 second window
-        if cycle_n == 50:
-            current_peaks_A, current_peaks_B = torch.split(current_peaks, 25)
+        assert (cycle_n % 2 == 0)
 
-        elif cycle_n == 25:
-            current_peaks_A, current_peaks_B = torch.split(current_peaks, 13)
+        current_peaks_a, current_peaks_b = torch.split(current_peaks, int(cycle_n / 2))
 
-        # Split for 1.5 second windows
-        elif cycle_n == 90:
-            tmp = np.split(current_peaks, 3)
-            current_peaks_A = tmp[0]
-            current_peaks_B = torch.append(tmp[1], tmp[2])
+        # Relative magnitude of the current peaks (ON/OFF events)
+        mean_steady_peak_a = torch.mean(current_peaks_a)
+        mean_steady_peak_b = torch.mean(current_peaks_b)
 
-        # Relative magnitude of the current peaks
-        mean_steady_peak_A = torch.mean(current_peaks_A)
-
-        # device_current_signature = current_peaks_B - mean_steady_peak_A
-        device_current_signature = current_peaks - mean_steady_peak_A
+        # device_current_signature = current_peaks - mean_steady_peak
+        device_current_signature = torch.zeros(cycle_n)
+        device_current_signature[:int(cycle_n / 2)] = current_peaks_a - mean_steady_peak_b
+        device_current_signature[int(cycle_n / 2):] = current_peaks_b - mean_steady_peak_a
 
         if features is None:
             features = device_current_signature.unsqueeze(0)
@@ -161,12 +153,14 @@ class AOT(object):
 
 class Spectrogram(object):
 
-    def __init__(self, n_fft=2000):
+    def __init__(self, net_frequency=50, measurement_frequency=50000):
         """ Calculates the Mel Spectrogram of an event.
 
         Args:
-            n_fft: Size of FFT, creates n_fft // 2 + 1 bins.
+            net_frequency (int): Frequency of the net 50Hz or 60Hz
+            measurement_frequency (int): Frequency of the measurements
         """
+        n_fft = int(measurement_frequency / net_frequency) * 2 - 1
         self.torch_spec = torchaudio.transforms.Spectrogram(n_fft=n_fft, hop_length=int((n_fft / 2) + 1))
         self.feature_dim = self.torch_spec.hop_length
 
@@ -185,13 +179,14 @@ class Spectrogram(object):
 
 class MelSpectrogram(object):
 
-    def __init__(self, n_fft=2000, measurement_frequency=50000):
+    def __init__(self, net_frequency=50, measurement_frequency=50000):
         """ Calculates the Mel Spectrogram of an event.
 
         Args:
-            n_fft: Size of FFT, creates n_fft // 2 + 1 bins.
+            net_frequency (int): Frequency of the net 50Hz or 60Hz
             measurement_frequency (int): Frequency of the measurements
         """
+        n_fft = int(measurement_frequency / net_frequency) * 2 - 1
         self.torch_mel_spec = torchaudio.transforms.MelSpectrogram(sample_rate=measurement_frequency, n_fft=n_fft,
                                                                    hop_length=int((n_fft / 2) + 1))
         self.feature_dim = self.torch_mel_spec.n_mels
@@ -212,13 +207,14 @@ class MelSpectrogram(object):
 
 class MFCC(object):
 
-    def __init__(self, n_fft=2000, measurement_frequency=50000):
+    def __init__(self, net_frequency=50, measurement_frequency=50000):
         """ Calculates the  Mel-frequency cepstrum coefficients of an event.
 
         Args:
-            n_fft: Size of FFT, creates n_fft // 2 + 1 bins.
+            net_frequency (int): Frequency of the net 50Hz or 60Hz
             measurement_frequency (int): Frequency of the measurements
         """
+        n_fft = int(measurement_frequency / net_frequency) * 2 - 1
         self.torch_mfcc = torchaudio.transforms.MFCC(sample_rate=measurement_frequency, n_mfcc=64,
                                                      melkwargs={"n_fft": n_fft, "hop_length": int((n_fft / 2) + 1)})
         self.feature_dim = self.torch_mfcc.n_mfcc
@@ -295,28 +291,30 @@ class RandomAugment(object):
 
 if __name__ == '__main__':
 
-    current = torch.rand(25000)
-    voltage = torch.rand(25000)
+
+    current = torch.rand(24576)
+    voltage = torch.rand(24576)
     features = None
 
     from torchvision import transforms
-    """
+
+    measurement_frequency = 6400
     transform = transforms.Compose([
-        RandomAugment(),
-        ACPower(),
-        DCS(),
-        COT(),
-        AOT()
+        RandomAugment(measurement_frequency=measurement_frequency),
+        ACPower(measurement_frequency=measurement_frequency),
+        DCS(measurement_frequency=measurement_frequency),
+        COT(measurement_frequency=measurement_frequency),
+        AOT(measurement_frequency=measurement_frequency)
     ])
     for i in range(0, 10):
         x = transform((current, voltage, features, [0]))
         print(x[2].shape)
-    """
+
     transform = transforms.Compose([
-        RandomAugment(),
-        Spectrogram(),
-        MelSpectrogram(),
-        MFCC()
+        RandomAugment(measurement_frequency=measurement_frequency),
+        Spectrogram(measurement_frequency=measurement_frequency),
+        MelSpectrogram(measurement_frequency=measurement_frequency),
+        MFCC(measurement_frequency=measurement_frequency)
     ])
     for i in range(0, 10):
         x = transform((current, voltage, features, [0]))

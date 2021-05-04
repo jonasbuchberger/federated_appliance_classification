@@ -19,7 +19,6 @@ def test(model, test_loader, **config):
     """
 
     device = ("cuda:0" if torch.cuda.is_available() else "cpu")
-    print(f"Process running on: {device}")
 
     class_dict = test_loader.dataset.class_dict
     experiment_name = config['experiment_name']

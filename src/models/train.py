@@ -21,7 +21,6 @@ def train(model, train_loader, val_loader, **config):
     """
 
     device = ("cuda:0" if torch.cuda.is_available() else "cpu")
-    print(f"Process running on: {device}")
 
     # Getting parameters from train_config
     early_stopping = config.get('early_stopping', None)
@@ -126,4 +125,4 @@ def train(model, train_loader, val_loader, **config):
         text_file.write(str(model))
     text_file.close()
 
-    return os.path.join(log_path, 'model.pth')
+    return os.path.join(log_path, 'model.pth'), best_f1

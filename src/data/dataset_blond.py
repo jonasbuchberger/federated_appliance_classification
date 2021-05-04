@@ -77,18 +77,15 @@ class BLOND(Dataset):
         # Cut length of measurement window
         # current = torch.as_tensor(f['data']['block0_values'][:, 1])[300:][:25000]
         # voltage = torch.as_tensor(f['data']['block0_values'][:, 0])[300:][:25000]
-        current = torch.as_tensor(f['data']['block0_values'][:, 1])[:25472]
-        voltage = torch.as_tensor(f['data']['block0_values'][:, 0])[:25472]
+        current = torch.as_tensor(f['data']['block0_values'][:, 1])
+        voltage = torch.as_tensor(f['data']['block0_values'][:, 0])
 
-        """
-        # Shifts event widnow to start with a new cycle
-        if str(events['Phase'].loc[i]) == 'A':
-            idx = np.where(np.diff(np.signbit(window['Current A'][:250])))[0][0]
-        else:
-            idx = np.where(np.diff(np.signbit(window['Current B'][:250])))[0][0]
+        # Shifts event window to start with a new cycle
+        tmp = (current - torch.mean(current)) / torch.std(current)
+        idx = torch.where(torch.diff(torch.signbit(tmp[:250])))[0][0]
 
-        window = data[lower + idx: upper + idx]
-        """
+        current = current[idx: 24576 + idx]
+        voltage = voltage[idx: 24576 + idx]
 
         # Apply feature transform on current/voltage, if no transform applied return (current, voltage, None, class)
         class_num = int(row['Class'])
@@ -160,8 +157,6 @@ def get_datalaoders(path_to_data, batch_size, medal_id=None, features=None, clas
 
 
 if __name__ == '__main__':
-
-    BLOND()
 
     class_dict = {
         'Laptop': 0,
