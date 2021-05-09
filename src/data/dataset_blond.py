@@ -25,7 +25,7 @@ TYPE_CLASS = {
 
 class BLOND(Dataset):
 
-    def __init__(self, fold, path_to_data, transform=None, medal_id=None, class_dict=TYPE_CLASS):
+    def __init__(self, fold, path_to_data, transform=None, medal_id=None, class_dict=TYPE_CLASS, use_synthetic=False):
         """
 
         Args:
@@ -34,13 +34,21 @@ class BLOND(Dataset):
             transform (torchvision.transform): Transforms to apply on the current wave
             medal_id (int): 1-14 for single medal or None for all
             class_dict (dict): Dict with the desired classes to use for training
+            use_synthetic (bool): Use synthetic data for training
         """
         self.transform = transform
         self.path_to_data = path_to_data
         self.fold = fold
         self.class_dict = class_dict
+        self.use_synthetic = use_synthetic
 
-        self.labels = pd.read_csv(os.path.join(path_to_data, 'events_new.csv'), index_col=0)
+        # Choose labels with or without synthetic data
+        if self.use_synthetic:
+            self.labels = pd.read_csv(os.path.join(path_to_data, 'events_syn.csv'), index_col=0)
+        else:
+            self.labels = pd.read_csv(os.path.join(path_to_data, 'events_new.csv'), index_col=0)
+            self.labels['synthetic'] = 0
+
         # Filter labels for classes in class_dict
         self.labels = self.labels[self.labels['Type'].isin(self.class_dict.keys())]
 
@@ -63,42 +71,42 @@ class BLOND(Dataset):
 
         # Filter for medal unit
         if medal_id is not None:
-            self.labels = self.labels[self.labels['Medal_Nr'] == medal_id]
+            self.labels = self.labels[self.labels['Medal'] == medal_id]
 
     def __len__(self):
         return len(self.labels)
 
     def __getitem__(self, idx):
         row = self.labels.iloc[idx]
-        path = os.path.join(self.path_to_data, f'event_snippets/medal-{row["Medal"]}')
+
+        folder = 'synthetic' if row['synthetic'] else 'event'
+        path = os.path.join(self.path_to_data, f'{folder}_snippets/medal-{row["Medal"]}')
         file_name = os.path.join(f'{row["Medal"]}_{row["Socket"]}_{row["Appliance"]}_{row["Timestamp"]}.h5')
         f = h5py.File(os.path.join(path, file_name), 'r')
 
         # Cut length of measurement window
-        # current = torch.as_tensor(f['data']['block0_values'][:, 1])[300:][:25000]
-        # voltage = torch.as_tensor(f['data']['block0_values'][:, 0])[300:][:25000]
         current = torch.as_tensor(f['data']['block0_values'][:, 1])
         voltage = torch.as_tensor(f['data']['block0_values'][:, 0])
 
-        # Shifts event window to start with a new cycle
-        tmp = (current - torch.mean(current)) / torch.std(current)
-        idx = torch.where(torch.diff(torch.signbit(tmp[:250])))[0][0]
+        if not row['synthetic']:
+            # Shifts event window to start with a new cycle
+            tmp = (current - torch.mean(current)) / torch.std(current)
+            idx = torch.where(torch.diff(torch.signbit(tmp[:250])))[0][0]
 
-        current = current[idx: 24576 + idx]
-        voltage = voltage[idx: 24576 + idx]
+            current = current[idx: 24576 + idx]
+            voltage = voltage[idx: 24576 + idx]
 
-        # Apply feature transform on current/voltage, if no transform applied return (current, voltage, None, class)
+        # Apply feature transform on current/voltage, if no transform applied return (current, voltage, class)
         class_num = int(row['Class'])
-
         sample = (current, voltage, None, class_num)
         if self.transform:
             _, _, features, _ = self.transform(sample)
             return features.float(), class_num
         else:
-            return sample
+            return sample[0].float(), sample[1].float(), sample[3]
 
 
-def get_datalaoders(path_to_data, batch_size, medal_id=None, features=None, class_dict=TYPE_CLASS):
+def get_datalaoders(path_to_data, batch_size, medal_id=None, use_synthetic=False, features=None, class_dict=TYPE_CLASS):
     """ Returns data loaders
 
     Args:
@@ -106,6 +114,7 @@ def get_datalaoders(path_to_data, batch_size, medal_id=None, features=None, clas
         batch_size (int): Size of batches
         medal_id (int): 1-14 for single medal or None for all
         features (dict): Dict containing the train and val/test features
+        use_synthetic (bool): Use synthetic data for training
         class_dict (dict): Dict of type class mapping
 
     Returns:
@@ -114,22 +123,21 @@ def get_datalaoders(path_to_data, batch_size, medal_id=None, features=None, clas
         test_loader (torch.utils.data.DataLoader)
     """
     num_workers = 2
-    if features is None:
-        features = {'train': None, 'val': None, 'test': None}
 
     train_set = BLOND(path_to_data=path_to_data,
                       fold='train',
-                      transform=Compose(features['train']),
+                      transform=Compose(features['train']) if features is not None else features,
                       medal_id=medal_id,
+                      use_synthetic=use_synthetic,
                       class_dict=class_dict)
     val_set = BLOND(path_to_data=path_to_data,
                     fold='val',
-                    transform=Compose(features['val']),
+                    transform=Compose(features['val']) if features is not None else features,
                     medal_id=medal_id,
                     class_dict=class_dict)
     test_set = BLOND(path_to_data=path_to_data,
                      fold='test',
-                     transform=Compose(features['val']),
+                     transform=Compose(features['val']) if features is not None else features,
                      medal_id=medal_id,
                      class_dict=class_dict)
 

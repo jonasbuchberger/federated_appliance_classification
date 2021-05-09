@@ -4,7 +4,7 @@ import numpy as np
 
 from copy import deepcopy
 from src.data.dataset_blond import get_datalaoders
-from src.models.models import BlondConvNet, BlondLstmNet
+from src.models.models import BlondConvNet, BlondLstmNet, BlondResNet
 from src.models.test import test
 from src.models.train import train
 from src.utils import ROOT_DIR
@@ -32,7 +32,7 @@ def run_config(path_to_data, **config):
 
     # Create experiment name
     if config['experiment_name'] is None:
-        config['experiment_name'] = f"test_{config['model_kwargs']['name']}_" \
+        config['experiment_name'] = f"{config['model_kwargs']['name']}_" \
                                     f"{config['optim'].__name__}_" \
                                     f"{config['criterion'].__class__.__name__}_" \
                                     f"CLASS_{len(config['class_dict'].keys())}_" \
@@ -50,6 +50,7 @@ def run_config(path_to_data, **config):
     # Create datalaoders
     train_loader, val_loader, test_loader = get_datalaoders(path_to_data,
                                                             config['batch_size'],
+                                                            use_synthetic=config['use_synthetic'],
                                                             features=config['features'],
                                                             class_dict=config['class_dict'])
 
@@ -66,6 +67,12 @@ def run_config(path_to_data, **config):
                              num_classes=len(config['class_dict'].keys()),
                              num_layers=config['model_kwargs']['num_layers'],
                              hidden_layer_size=config['model_kwargs']['start_size'])
+    elif config['model_kwargs']['name'] == 'RESNET':
+        model = BlondResNet(in_features=in_features,
+                            seq_len=config['seq_len'],
+                            num_classes=len(config['class_dict'].keys()),
+                            num_layers=config['model_kwargs']['num_layers'],
+                            out_features=config['model_kwargs']['start_size'])
     else:
         print(f'Unsupported model: {config["model"]["name"]}')
 
@@ -148,15 +155,17 @@ if __name__ == '__main__':
         'Monitor': 1,
         'USB Charger': 2
     }
-    class_dict = {
-        'Dev Board': 0,
-        'Laptop': 1,
-        'Monitor': 2,
-        'PC': 3,
-        'Printer': 4,
-        'Projector': 5,
-        'Screen Motor': 6,
-        'USB Charger': 7
+    TYPE_CLASS = {
+        'Battery Charger': 0,
+        'Daylight': 1,
+        'Dev Board': 2,
+        'Laptop': 3,
+        'Monitor': 4,
+        'PC': 5,
+        'Printer': 6,
+        'Projector': 7,
+        'Screen Motor': 8,
+        'USB Charger': 9
     }
     config = {
         'batch_size': 100,
@@ -164,22 +173,32 @@ if __name__ == '__main__':
         'seq_len': 190,
         'criterion': torch.nn.CrossEntropyLoss(),
         'optim': torch.optim.SGD,
-        'optim_kwargs': {'lr': 0.001, 'weight_decay': 0.0},
+        'optim_kwargs': {'lr': 0.059, 'weight_decay': 0.0},
         'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau,
         'scheduler_kwargs': {'factor': 0.1, 'patience': 3, 'mode': 'max'},
         'early_stopping': 5,
-        'model_kwargs': {'name': 'CNN1D', 'num_layers': 2, 'start_size': 15},
+        'model_kwargs': {'name': 'LSTM', 'num_layers': 1, 'start_size': 25},
         'class_dict': class_dict,
         'features': None,
-        'experiment_name': None
+        'experiment_name': 'Best_LSTM_with_synthetic',
+        'use_synthetic': True
     }
 
-    run_experiment(path_to_data, **config)
+    #run_experiment(path_to_data, **config)
 
-    """
     feature_dict = {
-        'train': [RandomAugment(measurement_frequency=6400)],
-        'val': [RandomAugment(measurement_frequency=6400, p=0)]
+        'train': [RandomAugment(measurement_frequency=6400),
+                  ACPower(measurement_frequency=6400),
+                  Spectrogram(measurement_frequency=6400),
+                  COT(measurement_frequency=6400),
+                  AOT(measurement_frequency=6400)],
+        'val': [RandomAugment(measurement_frequency=6400, p=0),
+                ACPower(measurement_frequency=6400),
+                Spectrogram(measurement_frequency=6400),
+                COT(measurement_frequency=6400),
+                AOT(measurement_frequency=6400)],
     }
+    config['features'] = feature_dict
     run_config(path_to_data, **config)
-    """
+
+

@@ -21,9 +21,10 @@ def tensor_confusion_matrix(y_true, y_pred, class_dict):
     cm = confusion_matrix(y_true, y_pred)
 
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=list(class_dict.keys()))
-    disp.plot(include_values=True, cmap='Blues', ax=None, xticks_rotation='horizontal', values_format='d')
+    disp.plot(include_values=True, cmap='Blues', ax=None, xticks_rotation='vertical', values_format='d')
 
     buf = io.BytesIO()
+    plt.tight_layout()
     plt.savefig(buf, format='png')
     buf.seek(0)
     im = Image.open(buf).copy()
