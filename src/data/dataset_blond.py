@@ -134,11 +134,13 @@ def get_datalaoders(path_to_data, batch_size, medal_id=None, use_synthetic=False
                     fold='val',
                     transform=Compose(features['val']) if features is not None else features,
                     medal_id=medal_id,
+                    use_synthetic=use_synthetic,
                     class_dict=class_dict)
     test_set = BLOND(path_to_data=path_to_data,
                      fold='test',
                      transform=Compose(features['val']) if features is not None else features,
                      medal_id=medal_id,
+                     use_synthetic=use_synthetic,
                      class_dict=class_dict)
 
     sampler = WeightedRandomSampler(train_set.labels['Weight'], len(train_set), replacement=True)

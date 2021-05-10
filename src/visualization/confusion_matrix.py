@@ -7,7 +7,6 @@ from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.metrics import confusion_matrix
 from torchvision import transforms as torch_transforms
 
-
 def tensor_confusion_matrix(y_true, y_pred, class_dict):
     """ Creates confusion matrix for labels.
 
@@ -18,7 +17,7 @@ def tensor_confusion_matrix(y_true, y_pred, class_dict):
     Returns:
         (torch.Tensor): Image tensor of the confusion matrix
     """
-    cm = confusion_matrix(y_true, y_pred)
+    cm = confusion_matrix(y_true, y_pred, labels=torch.arange(len(class_dict.keys())))
 
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=list(class_dict.keys()))
     disp.plot(include_values=True, cmap='Blues', ax=None, xticks_rotation='vertical', values_format='d')
