@@ -2,6 +2,7 @@ import os
 import warnings
 import numpy as np
 
+from datetime import datetime
 from copy import deepcopy
 from src.data.dataset_blond import get_datalaoders
 from src.models.models import BlondConvNet, BlondLstmNet, BlondResNet
@@ -36,7 +37,7 @@ def run_config(path_to_data, **config):
                                     f"{config['optim'].__name__}_" \
                                     f"{config['criterion'].__class__.__name__}_" \
                                     f"CLASS_{len(config['class_dict'].keys())}_" \
-                                    f"{feature_string}_6400"
+                                    f"{feature_string}_6400_Synthetic"
         # f"{config['scheduler'].__name__}_"
 
         config['run_name'] = f"lr-{config['optim_kwargs']['lr']}_" \
@@ -45,14 +46,15 @@ def run_config(path_to_data, **config):
                              f"ss-{config['model_kwargs']['start_size']}"
 
     else:
-        config['run_name'] = ''
+        config['run_name'] = config.get('run_name', '')
 
     # Create datalaoders
     train_loader, val_loader, test_loader = get_datalaoders(path_to_data,
                                                             config['batch_size'],
                                                             use_synthetic=config['use_synthetic'],
                                                             features=config['features'],
-                                                            class_dict=config['class_dict'])
+                                                            class_dict=config['class_dict'],
+                                                            k_fold=config.get('k_fold', None))
 
     # Initialize model
     if config['model_kwargs']['name'] == 'CNN1D':
@@ -147,15 +149,21 @@ def run_experiment(path_to_data, num_experiments=6, **config):
         feature_list.remove(feature_list[best_feature])
 
 
+def run_k_fold(path_to_data, **config):
+
+    config['experiment_name'] = f'K_Fold_{datetime.now().time()}'.replace(':', '_')
+
+    for fold_i in range(0, 10):
+        config['run_name'] = f'fold_{fold_i}'
+        config['k_fold'] = fold_i
+        run_config(path_to_data, **config)
+
+
 if __name__ == '__main__':
     path_to_data = os.path.join(ROOT_DIR, 'data')
 
+    """
     class_dict = {
-        'Laptop': 0,
-        'Monitor': 1,
-        'USB Charger': 2
-    }
-    TYPE_CLASS = {
         'Battery Charger': 0,
         'Daylight': 1,
         'Dev Board': 2,
@@ -167,6 +175,18 @@ if __name__ == '__main__':
         'Screen Motor': 8,
         'USB Charger': 9
     }
+    """
+    class_dict = {
+        'Dev Board': 0,
+        'Laptop': 1,
+        'Monitor': 2,
+        'PC': 3,
+        'Printer': 4,
+        'Projector': 5,
+        'Screen Motor': 6,
+        'USB Charger': 7
+    }
+
     config = {
         'batch_size': 100,
         'num_epochs': 20,
@@ -177,11 +197,11 @@ if __name__ == '__main__':
         'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau,
         'scheduler_kwargs': {'factor': 0.1, 'patience': 3, 'mode': 'max'},
         'early_stopping': 5,
-        'model_kwargs': {'name': 'LSTM', 'num_layers': 1, 'start_size': 25},
+        'model_kwargs': {'name': 'LSTM', 'num_layers': 1, 'start_size': 28},
         'class_dict': class_dict,
         'features': None,
-        'experiment_name': 'Best_LSTM_with_synthetic',
-        'use_synthetic': True
+        'experiment_name': None,
+        'use_synthetic': False,
     }
 
     #run_experiment(path_to_data, **config)
@@ -196,9 +216,11 @@ if __name__ == '__main__':
                 ACPower(measurement_frequency=6400),
                 Spectrogram(measurement_frequency=6400),
                 COT(measurement_frequency=6400),
-                AOT(measurement_frequency=6400)],
+                AOT(measurement_frequency=6400)]
     }
     config['features'] = feature_dict
-    run_config(path_to_data, **config)
+    #run_config(path_to_data, **config)
+    run_k_fold(path_to_data, **config)
+
 
 

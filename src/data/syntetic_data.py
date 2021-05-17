@@ -71,7 +71,7 @@ def create_synthetic_data(path_to_data, generator, num_rounds=1):
 if __name__ == '__main__':
 
     path_to_data = os.path.join(ROOT_DIR, 'data')
-    path_to_model = os.path.join(ROOT_DIR, 'notebooks', 'generator_model.pth')
+    path_to_model = os.path.join(ROOT_DIR, 'notebooks', 'generator_model_std=0.01_10.pth')
 
     generator = Generator()
     generator.load_state_dict(torch.load(path_to_model))
