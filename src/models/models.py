@@ -154,13 +154,13 @@ class BlondResNet(nn.Module):
             in_features = out_features
             out_features = int(out_features * 1.5)
 
-        self.bottleneck = nn.Conv1d(in_features, int(in_features/4), kernel_size=1, stride=1, padding=0)
-        self.classifier = BlondNetMLP(seq_len, int(in_features/4), num_classes, max(1, int(num_layers / 2)))
+        self.global_avg = nn.AdaptiveAvgPool1d(1)
+        self.classifier = BlondNetMLP(1, in_features, num_classes, max(1, int(num_layers / 2)))
 
     def forward(self, x):
         for layer in self.layers:
             x = layer(x)
-        x = self.bottleneck(x)
+        x = self.global_avg(x)
         x = x.reshape(x.size(0), -1)
         x = self.classifier(x)
 
