@@ -173,7 +173,7 @@ class Spectrogram(object):
         try:
             spec = self.torch_spec(current_in)
         except RuntimeError:
-            spec = librosa.core.spectrum._spectrogram(current.numpy(),
+            spec, _ = librosa.core.spectrum._spectrogram(current.numpy(),
                                                       n_fft=self.n_fft,
                                                       hop_length=self.hop_length,
                                                       center=True,
