@@ -1,5 +1,6 @@
 import torch
 import torchaudio
+import librosa
 
 
 class ACPower(object):
@@ -160,14 +161,25 @@ class Spectrogram(object):
             net_frequency (int): Frequency of the net 50Hz or 60Hz
             measurement_frequency (int): Frequency of the measurements
         """
-        n_fft = int(measurement_frequency / net_frequency) * 2 - 1
-        self.torch_spec = torchaudio.transforms.Spectrogram(n_fft=n_fft, hop_length=int((n_fft / 2) + 1))
+        self.n_fft = int(measurement_frequency / net_frequency) * 2 - 1
+        self.hop_length = int((self.n_fft / 2) + 1)
+        self.torch_spec = torchaudio.transforms.Spectrogram(n_fft=self.n_fft, hop_length=self.hop_length)
         self.feature_dim = self.torch_spec.hop_length
 
     def __call__(self, sample):
         current_in, voltage_in, features, target = sample
 
-        spec = self.torch_spec(current_in)
+        # Try if PyTorch is installed with working fft, else use librosa library
+        try:
+            spec = self.torch_spec(current_in)
+        except RuntimeError:
+            spec = librosa.core.spectrum._spectrogram(current.numpy(),
+                                                      n_fft=self.n_fft,
+                                                      hop_length=self.hop_length,
+                                                      center=True,
+                                                      pad_mode="reflect",
+                                                      power=2.0)
+            spec = torch.as_tensor(spec)
 
         if features is None:
             features = spec
@@ -186,16 +198,31 @@ class MelSpectrogram(object):
             net_frequency (int): Frequency of the net 50Hz or 60Hz
             measurement_frequency (int): Frequency of the measurements
         """
-        n_fft = int(measurement_frequency / net_frequency) * 2 - 1
-        self.torch_mel_spec = torchaudio.transforms.MelSpectrogram(sample_rate=measurement_frequency, n_fft=n_fft,
-                                                                   hop_length=int((n_fft / 2) + 1))
+        self.n_fft = int(measurement_frequency / net_frequency) * 2 - 1
+        self.hop_length = int((self.n_fft / 2) + 1)
+        self.torch_mel_spec = torchaudio.transforms.MelSpectrogram(sample_rate=measurement_frequency, n_fft=self.n_fft,
+                                                                   hop_length=self.hop_length)
         self.feature_dim = self.torch_mel_spec.n_mels
 
     def __call__(self, sample):
         current_in, voltage_in, features, target = sample
         current_in = current_in.float()
 
-        mel_spec = self.torch_mel_spec(current_in)
+        # Try if PyTorch is installed with working fft, else use librosa library
+        try:
+            mel_spec = self.torch_mel_spec(current_in)
+        except RuntimeError:
+            mel_spec = librosa.feature.melspectrogram(current.numpy(),
+                                                      sr=measurement_frequency,
+                                                      n_fft=self.n_fft,
+                                                      hop_length=self.hop_length,
+                                                      center=True,
+                                                      pad_mode="reflect",
+                                                      power=2.0,
+                                                      n_mels=128,
+                                                      norm=None,
+                                                      htk=True)
+            mel_spec = torch.as_tensor(mel_spec)
 
         if features is None:
             features = mel_spec
@@ -214,16 +241,28 @@ class MFCC(object):
             net_frequency (int): Frequency of the net 50Hz or 60Hz
             measurement_frequency (int): Frequency of the measurements
         """
-        n_fft = int(measurement_frequency / net_frequency) * 2 - 1
+        self.n_fft = int(measurement_frequency / net_frequency) * 2 - 1
+        self.hop_length = int((self.n_fft / 2) + 1)
         self.torch_mfcc = torchaudio.transforms.MFCC(sample_rate=measurement_frequency, n_mfcc=64,
-                                                     melkwargs={"n_fft": n_fft, "hop_length": int((n_fft / 2) + 1)})
+                                                     melkwargs={"n_fft": self.n_fft, "hop_length": self.hop_length})
         self.feature_dim = self.torch_mfcc.n_mfcc
 
     def __call__(self, sample):
         current_in, voltage_in, features, target = sample
         current_in = current_in.float()
 
-        mfcc = self.torch_mfcc(current_in)
+        # Try if PyTorch is installed with working fft, else use librosa library
+        try:
+            mfcc = self.torch_mfcc(current_in)
+        except RuntimeError:
+            mfcc = librosa.feature.mfcc(y=current.numpy(),
+                                        sr=measurement_frequency,
+                                        n_mfcc=64,
+                                        hop_length=self.hop_length,
+                                        n_fft=self.n_fft,
+                                        n_mels=128,
+                                        htk=True)
+            mfcc = torch.as_tensor(mfcc)
 
         if features is None:
             features = mfcc
@@ -290,7 +329,6 @@ class RandomAugment(object):
 
 
 if __name__ == '__main__':
-
 
     current = torch.rand(24576)
     voltage = torch.rand(24576)
