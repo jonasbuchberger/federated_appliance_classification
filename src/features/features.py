@@ -173,7 +173,7 @@ class Spectrogram(object):
         try:
             spec = self.torch_spec(current_in)
         except RuntimeError:
-            spec, _ = librosa.core.spectrum._spectrogram(current.numpy(),
+            spec, _ = librosa.core.spectrum._spectrogram(current_in.numpy(),
                                                       n_fft=self.n_fft,
                                                       hop_length=self.hop_length,
                                                       center=True,
@@ -212,7 +212,7 @@ class MelSpectrogram(object):
         try:
             mel_spec = self.torch_mel_spec(current_in)
         except RuntimeError:
-            mel_spec = librosa.feature.melspectrogram(current.numpy(),
+            mel_spec = librosa.feature.melspectrogram(current_in.numpy(),
                                                       sr=measurement_frequency,
                                                       n_fft=self.n_fft,
                                                       hop_length=self.hop_length,
@@ -255,7 +255,7 @@ class MFCC(object):
         try:
             mfcc = self.torch_mfcc(current_in)
         except RuntimeError:
-            mfcc = librosa.feature.mfcc(y=current.numpy(),
+            mfcc = librosa.feature.mfcc(y=current_in.numpy(),
                                         sr=measurement_frequency,
                                         n_mfcc=64,
                                         hop_length=self.hop_length,
