@@ -19,7 +19,24 @@ def run_config(path_to_data, **config):
     """ Trains and tests a single model specified with the config.
 
     Args:
-        **config:
+        path_to_data (string): Path to the data directory
+        **config: batch_size (int): Size of the batches
+                  num_epochs (int): Max number of train epochs
+                  seq_len (int): Length of model input time series after processing
+                  criterion (torch.nn): Loss function
+                  optim (torch.optim): Optimizer
+                  optim_kwargs (dict): Optimizer kwargs
+                  scheduler (torch.optim): LR scheduler for training
+                  scheduler_kwargs (dict): Scheduler kwargs
+                  early_stopping (int): Number of epchs or None for no early stopping
+                  model_kwargs (dict): Model initialization parameters
+                  class_dict (dict): Dictionary of desired classes
+                  features (dict): Dictionary of val and train features as list
+                  experiment_name (string): Name to store the experiment results or None
+                  use_synthetic (bool): Use synthetic data for training
+
+    Returns:
+        (float): Best F1 score on validation set
     """
 
     # Get string of feature list
@@ -54,7 +71,7 @@ def run_config(path_to_data, **config):
                                                             k_fold=config.get('k_fold', None))
 
     # Initialize model
-    model = init_model(config)
+    model = init_model(**config)
 
     trained_model, best_f1 = train(model, train_loader, val_loader, **config)
 
@@ -70,9 +87,22 @@ def run_experiment(path_to_data, num_experiments=6, **config):
         Runs num_experiments experiments sampled by Optimal Latin HyperCube per feature chain.
 
     Args:
-        path_to_data:
-        num_experiments:
-        **config:
+        path_to_data (string): Path to the data directory
+        num_experiments (int): Number of experiments to be created by latin hypercube
+        **config: batch_size (int): Size of the batches
+                  num_epochs (int): Max number of train epochs
+                  seq_len (int): Length of model input time series after processing
+                  criterion (torch.nn): Loss function
+                  optim (torch.optim): Optimizer
+                  optim_kwargs (dict): Optimizer kwargs
+                  scheduler (torch.optim): LR scheduler for training
+                  scheduler_kwargs (dict): Scheduler kwargs
+                  early_stopping (int): Number of epchs or None for no early stopping
+                  model_kwargs (dict): Model initialization parameters
+                  class_dict (dict): Dictionary of desired classes
+                  features (dict): Dictionary of val and train features as list
+                  experiment_name (string): Name to store the experiment results or None
+                  use_synthetic (bool): Use synthetic data for training
     """
     measurement_frequency = 6400
     # List of all features to test
@@ -128,7 +158,25 @@ def run_experiment(path_to_data, num_experiments=6, **config):
 
 
 def run_k_fold(path_to_data, **config):
+    """ Does a 10-fold experiment and stores the result of all 10 models
 
+    Args:
+        path_to_data (string): Path to the data directory
+        **config: batch_size (int): Size of the batches
+                  num_epochs (int): Max number of train epochs
+                  seq_len (int): Length of model input time series after processing
+                  criterion (torch.nn): Loss function
+                  optim (torch.optim): Optimizer
+                  optim_kwargs (dict): Optimizer kwargs
+                  scheduler (torch.optim): LR scheduler for training
+                  scheduler_kwargs (dict): Scheduler kwargs
+                  early_stopping (int): Number of epchs or None for no early stopping
+                  model_kwargs (dict): Model initialization parameters
+                  class_dict (dict): Dictionary of desired classes
+                  features (dict): Dictionary of val and train features as list
+                  experiment_name (string): Name to store the experiment results or None
+                  use_synthetic (bool): Use synthetic data for training
+    """
     config['experiment_name'] = f'K_Fold_{datetime.now().time()}'.replace(':', '_')
 
     for fold_i in range(0, 10):
@@ -137,8 +185,17 @@ def run_k_fold(path_to_data, **config):
         run_config(path_to_data, **config)
 
 
-def init_model(config):
+def init_model(**config):
+    """ Initializes model
 
+    Args:
+        **config: seq_len (int): Length of model input time series after processing
+                  model_kwargs (dict): Model initialization parameters
+                  class_dict (dict): Dictionary of desired classes
+                  features (dict): Dictionary of val and train features as list
+    Returns:
+        (nn.Module): Model object
+    """
     # Calculate input feature dimension for model initialization
     in_features = 0
     for feature in config['features']['train']:
@@ -169,7 +226,8 @@ def init_model(config):
     return model
 
 
-def get_datalaoders(path_to_data, batch_size, medal_id=None, use_synthetic=False, features=None, class_dict=TYPE_CLASS, k_fold=None):
+def get_datalaoders(path_to_data, batch_size, medal_id=None, use_synthetic=False, features=None, class_dict=TYPE_CLASS,
+                    k_fold=None):
     """ Returns data loaders
 
     Args:
