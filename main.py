@@ -34,7 +34,6 @@ if __name__ == '__main__':
         'USB Charger': 7
     }
 
-
     config = {
         'batch_size': 100,
         'num_epochs': 20,

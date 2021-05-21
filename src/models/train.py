@@ -5,8 +5,7 @@ import torch
 from sklearn.metrics import precision_recall_fscore_support
 from tqdm import tqdm
 
-from src.utils import ROOT_DIR
-from src.utils import SummaryWriter
+from src.utils import ROOT_DIR, SummaryWriter
 
 
 def train(model, train_loader, val_loader, **config):
@@ -15,12 +14,13 @@ def train(model, train_loader, val_loader, **config):
         model (torch.nn.Module): Pytorch model
         train_loader (torch.utils.data.DataLoader): Dataloader with training set
         val_loader (torch.utils.data.DataLoader): Dataloader with validation set
-        config (dict): Dictionary of train parameters
+        **config: Dictionary of train parameters
     Returns:
         (string): Path of the trained model
     """
 
-    device = ("cuda:0" if torch.cuda.is_available() else "cpu")
+    #device = ("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = 'cpu'
 
     # Getting parameters from train_config
     early_stopping = config.get('early_stopping', None)

@@ -13,16 +13,17 @@ def test(model, test_loader, **config):
     """ Tests a given model and saves results to Tensorbaord
 
     Args:
-        - model (torch.nn.Module): Pytorch model
-        - test_loader (torch.utils.data.DataLoader): Data loader with test set
-        - train_config (dict): Dictionary of train parameters
+        model (torch.nn.Module): Pytorch model
+        test_loader (torch.utils.data.DataLoader): Data loader with test set
+        **config: Dictionary of train parameters
     """
 
-    device = ("cuda:0" if torch.cuda.is_available() else "cpu")
+    #device = ("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = 'cpu'
 
     class_dict = test_loader.dataset.class_dict
     experiment_name = config['experiment_name']
-    run_name = config['run_name']
+    run_name = config.get('run_name', '')
     log_path = os.path.join(ROOT_DIR, 'models', experiment_name, run_name)
     logger = SummaryWriter(log_path, filename_suffix='_test')
     os.makedirs(log_path, exist_ok=True)
