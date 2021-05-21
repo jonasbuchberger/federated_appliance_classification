@@ -137,6 +137,7 @@ def get_datalaoders(path_to_data, batch_size, medal_id=None, use_synthetic=False
         test_loader (torch.utils.data.DataLoader)
     """
     num_workers = 2
+    sampler = None
 
     train_set = BLOND(path_to_data=path_to_data,
                       fold='train',
@@ -161,9 +162,7 @@ def get_datalaoders(path_to_data, batch_size, medal_id=None, use_synthetic=False
                      k_fold=k_fold)
 
     if len(set(train_set.labels['Type'])) > 1:
-        sampler = WeightedRandomSampler(train_set.labels['Weight'], len(train_set), replacement=True)
-    else:
-        sample = None
+        sampler = WeightedRandomSampler(train_set.labels['Weight'].values, len(train_set), replacement=True)
 
     train_loader = torch.utils.data.DataLoader(
         train_set,
@@ -195,7 +194,7 @@ if __name__ == '__main__':
     }
 
     path = os.path.join(ROOT_DIR, 'data')
-    BLOND('train', path, k_fold=1)
+    #BLOND('train', path, k_fold=1)
 
-    t, _, _ = get_datalaoders(path, 10, class_dict=class_dict, medal_id=1)
+    t, _, _ = get_datalaoders(path, 10, medal_id=2)
 
