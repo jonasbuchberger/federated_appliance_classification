@@ -20,7 +20,6 @@ def run_server(size, config):
                                     f"{config['criterion'].__class__.__name__}_" \
                                     f"CLASS_{len(config['class_dict'].keys())}_" \
                                     f"{feature_string}_6400_Synthetic"
-        # f"{config['scheduler'].__name__}_"
 
         config['run_name'] = f"lr-{config['optim_kwargs']['lr']}_" \
                              f"wd-{config['optim_kwargs']['weight_decay']}_" \
@@ -34,7 +33,7 @@ def run_server(size, config):
     print('Send train config to clients.')
     send_broadcast(config)
 
-    model = init_model(config)
+    model = init_model(**config)
     # Broadcast initial model
     print('Send model to clients.')
     send_broadcast(model)
