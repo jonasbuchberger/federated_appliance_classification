@@ -15,20 +15,49 @@ warnings.filterwarnings("ignore", category=UserWarning)
 from src.features.features import *
 
 
+def init_model(config):
+
+    # Calculate input feature dimension for model initialization
+    in_features = 0
+    for feature in config['features']['train']:
+        in_features += feature.feature_dim
+    in_features = max(in_features, 1)
+
+    if config['model_kwargs']['name'] == 'CNN1D':
+        model = BlondConvNet(in_features=in_features,
+                             seq_len=config['seq_len'],
+                             num_classes=len(config['class_dict'].keys()),
+                             num_layers=config['model_kwargs']['num_layers'],
+                             out_features=config['model_kwargs']['start_size'])
+    elif config['model_kwargs']['name'] == 'LSTM':
+        model = BlondLstmNet(in_features=in_features,
+                             seq_len=config['seq_len'],
+                             num_classes=len(config['class_dict'].keys()),
+                             num_layers=config['model_kwargs']['num_layers'],
+                             hidden_layer_size=config['model_kwargs']['start_size'])
+    elif config['model_kwargs']['name'] == 'RESNET':
+        model = BlondResNet(in_features=in_features,
+                            seq_len=config['seq_len'],
+                            num_classes=len(config['class_dict'].keys()),
+                            num_layers=config['model_kwargs']['num_layers'],
+                            out_features=config['model_kwargs']['start_size'])
+    else:
+        print(f'Unsupported model: {config["model"]["name"]}')
+
+    return model
+
+
 def run_config(path_to_data, **config):
     """ Trains and tests a single model specified with the config.
 
     Args:
         **config:
     """
-    # Calculate input feature dimension for model initialization
+
     # Get string of feature list
-    in_features = 0
     feature_string = '['
     for feature in config['features']['train']:
-        in_features += feature.feature_dim
         feature_string += f'{feature.__class__.__name__}_'
-    in_features = max(in_features, 1)
     feature_string = feature_string[:-1] + ']'
 
     # Create experiment name
@@ -57,26 +86,7 @@ def run_config(path_to_data, **config):
                                                             k_fold=config.get('k_fold', None))
 
     # Initialize model
-    if config['model_kwargs']['name'] == 'CNN1D':
-        model = BlondConvNet(in_features=in_features,
-                             seq_len=config['seq_len'],
-                             num_classes=len(config['class_dict'].keys()),
-                             num_layers=config['model_kwargs']['num_layers'],
-                             out_features=config['model_kwargs']['start_size'])
-    elif config['model_kwargs']['name'] == 'LSTM':
-        model = BlondLstmNet(in_features=in_features,
-                             seq_len=config['seq_len'],
-                             num_classes=len(config['class_dict'].keys()),
-                             num_layers=config['model_kwargs']['num_layers'],
-                             hidden_layer_size=config['model_kwargs']['start_size'])
-    elif config['model_kwargs']['name'] == 'RESNET':
-        model = BlondResNet(in_features=in_features,
-                            seq_len=config['seq_len'],
-                            num_classes=len(config['class_dict'].keys()),
-                            num_layers=config['model_kwargs']['num_layers'],
-                            out_features=config['model_kwargs']['start_size'])
-    else:
-        print(f'Unsupported model: {config["model"]["name"]}')
+    model = init_model(config)
 
     trained_model, best_f1 = train(model, train_loader, val_loader, **config)
 
@@ -187,6 +197,7 @@ if __name__ == '__main__':
         'USB Charger': 7
     }
 
+
     config = {
         'batch_size': 100,
         'num_epochs': 20,
@@ -201,10 +212,12 @@ if __name__ == '__main__':
         'class_dict': class_dict,
         'features': None,
         'experiment_name': None,
-        'use_synthetic': False,
+        'use_synthetic': True,
     }
 
-    #run_experiment(path_to_data, **config)
+    for m in ['CNN1D', 'LSTM', 'RESNET']:
+        config['model_kwargs']['name'] = m
+        run_experiment(path_to_data, **config)
 
     feature_dict = {
         'train': [RandomAugment(measurement_frequency=6400),
@@ -220,7 +233,7 @@ if __name__ == '__main__':
     }
     config['features'] = feature_dict
     #run_config(path_to_data, **config)
-    run_k_fold(path_to_data, **config)
+    #run_k_fold(path_to_data, **config)
 
 
 
