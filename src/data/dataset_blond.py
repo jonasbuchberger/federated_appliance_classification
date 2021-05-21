@@ -4,8 +4,6 @@ import h5py
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
-from torch.utils.data import WeightedRandomSampler
-from torchvision.transforms import Compose
 from sklearn.model_selection import KFold
 
 from src.utils import ROOT_DIR
@@ -120,71 +118,6 @@ class BLOND(Dataset):
             return sample[0].float(), sample[1].float(), sample[3]
 
 
-def get_datalaoders(path_to_data, batch_size, medal_id=None, use_synthetic=False, features=None, class_dict=TYPE_CLASS, k_fold=None):
-    """ Returns data loaders
-
-    Args:
-        path_to_data (string): Path to the dataset
-        batch_size (int): Size of batches
-        medal_id (int): 1-14 for single medal or None for all
-        features (dict): Dict containing the train and val/test features
-        use_synthetic (bool): Use synthetic data for training
-        class_dict (dict): Dict of type class mapping
-
-    Returns:
-        train_loader (torch.utils.data.DataLoader)
-        val_loader (torch.utils.data.DataLoader)
-        test_loader (torch.utils.data.DataLoader)
-    """
-    num_workers = 2
-    sampler = None
-
-    train_set = BLOND(path_to_data=path_to_data,
-                      fold='train',
-                      transform=Compose(features['train']) if features is not None else features,
-                      medal_id=medal_id,
-                      use_synthetic=use_synthetic,
-                      class_dict=class_dict,
-                      k_fold=k_fold)
-    val_set = BLOND(path_to_data=path_to_data,
-                    fold='val',
-                    transform=Compose(features['val']) if features is not None else features,
-                    medal_id=medal_id,
-                    use_synthetic=use_synthetic,
-                    class_dict=class_dict,
-                    k_fold=k_fold)
-    test_set = BLOND(path_to_data=path_to_data,
-                     fold='test',
-                     transform=Compose(features['val']) if features is not None else features,
-                     medal_id=medal_id,
-                     use_synthetic=use_synthetic,
-                     class_dict=class_dict,
-                     k_fold=k_fold)
-
-    if len(set(train_set.labels['Type'])) > 1:
-        sampler = WeightedRandomSampler(train_set.labels['Weight'].values, len(train_set), replacement=True)
-
-    train_loader = torch.utils.data.DataLoader(
-        train_set,
-        batch_size=batch_size,
-        num_workers=num_workers,
-        sampler=sampler)
-
-    val_loader = torch.utils.data.DataLoader(
-        val_set,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=num_workers)
-
-    test_loader = torch.utils.data.DataLoader(
-        test_set,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers)
-
-    return train_loader, val_loader, test_loader
-
-
 if __name__ == '__main__':
 
     class_dict = {
@@ -196,5 +129,4 @@ if __name__ == '__main__':
     path = os.path.join(ROOT_DIR, 'data')
     #BLOND('train', path, k_fold=1)
 
-    t, _, _ = get_datalaoders(path, 10, medal_id=2)
 
