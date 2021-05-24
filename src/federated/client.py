@@ -50,5 +50,5 @@ def run_client(rank):
         send_gather(model)
 
         model = receive_broadcast()
-        optim = config['optim'](model.parameters(), **config['optim_kwargs'])
+        optim = config['optim'](model.parameters(), scheduler.get_lr(), config['optim_kwargs']['weight_decay'])
         scheduler = config['scheduler'](optim, **config['scheduler_kwargs'])
