@@ -3,7 +3,7 @@ import torch.distributed as dist
 
 
 def send_broadcast(obj):
-    """ Send an object from the server to all clients.
+    """ Send an object from the server to all clients
         Synchronous: Waits for all clients to have sent object received
 
     Args:

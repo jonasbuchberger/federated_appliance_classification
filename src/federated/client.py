@@ -50,3 +50,5 @@ def run_client(rank):
         send_gather(model)
 
         model = receive_broadcast()
+        optim = config['optim'](model.parameters(), **config['optim_kwargs'])
+        scheduler = config['scheduler'](optim, **config['scheduler_kwargs'])
