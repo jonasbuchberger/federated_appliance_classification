@@ -1,41 +1,27 @@
-FROM ubuntu:18.04
-# Install some basic utilities
-RUN apt-get update && apt-get install -y \
-    curl \
-    ca-certificates \
-    git \
-    bzip2 \
-    libx11-6 \
-    tmux \
-    gcc \
-    g++ \
-    python3-dev \
- && rm -rf /var/lib/apt/lists/*
+FROM ubuntu:20.04
 
-# Install Miniconda and Python 3.8
-ENV CONDA_AUTO_UPDATE_CONDA=false
+RUN apt-get update && \
+    apt-get upgrade --yes
 
-RUN curl -sLo ~/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
- && chmod +x ~/miniconda.sh \
- && ~/miniconda.sh -b -p /home/ubuntu/miniconda \
- && rm ~/miniconda.sh
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get install --yes software-properties-common python3 python3-pip && \
+    apt-get install --yes git && \
+    apt-get install --yes libavdevice-dev libavfilter-dev libopus-dev libvpx-dev pkg-config ffmpeg && \
+    apt-get install --yes libvpx-dev libopus-dev libffi-dev
 
-ENV PATH=/home/ubuntu/miniconda/bin:$PATH
-RUN conda clean -ya
+# Install torch
+RUN pip3 install torch==1.8.1
+RUN pip3 install torchvision==0.9.1
+RUN pip3 install torchaudio -f https://torch.kmtea.eu/whl/stable.html
 
-RUN conda install pytorch torchvision torchaudio cpuonly -c pytorch
-RUN conda install matplotlib
-RUN conda install scikit-learn
-RUN conda install pandas
-RUN conda install -c conda-forge notebook
-RUN conda install h5py
-RUN conda clean -ya
+RUN apt-get install llvm --yes
+RUN pip3 install librosa
 
-RUN pip install tensorboard
-RUN pip install tensorboardX
-RUN pip install syft
-RUN pip install smt
-RUN pip install tqdm
-
-# Set the default command to python3
-CMD ["python3"]
+RUN apt-get install --yes libhdf5-103 libhdf5-dev
+RUN pip3 install h5py
+RUN pip3 install tensorboard
+RUN pip3 install tensorboardX
+RUN pip3 install smt
+RUN pip3 install tqdm
+RUN pip3 install scikit-learn
+RUN pip3 install pandas
