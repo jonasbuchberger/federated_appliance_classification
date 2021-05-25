@@ -34,8 +34,8 @@ def init_process(rank, size, backend='gloo', master_addr='127.0.0.1', master_por
     else:
         config = {
             'batch_size': 10,
-            'total_epochs': 30,
-            'local_epochs': 5,
+            'total_epochs': 36,
+            'local_epochs': 6,
             'seq_len': 190,
             'criterion': torch.nn.CrossEntropyLoss(),
             'optim': torch.optim.SGD,
@@ -73,7 +73,7 @@ if __name__ == '__main__':
     init_process(rank, world_size)
     """
     import torch.multiprocessing as mp
-    size = 4
+    size = 5
     processes = []
     mp.set_start_method("spawn")
     for rank in range(size):
