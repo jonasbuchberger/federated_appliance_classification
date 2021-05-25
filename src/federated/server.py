@@ -17,7 +17,7 @@ def run_server(size, config):
     feature_string = feature_string[:-1] + ']'
 
     if config['experiment_name'] is None:
-        config['experiment_name'] = f"Federated_" \
+        config['experiment_name'] = f"Federated_{size}_" \
                                     f"{config['model_kwargs']['name']}_" \
                                     f"{config['optim'].__name__}_" \
                                     f"{config['criterion'].__class__.__name__}_" \
