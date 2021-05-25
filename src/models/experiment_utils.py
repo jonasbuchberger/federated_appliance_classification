@@ -157,11 +157,12 @@ def run_experiment(path_to_data, num_experiments=6, **config):
         feature_list.remove(feature_list[best_feature])
 
 
-def run_k_fold(path_to_data, **config):
-    """ Does a 10-fold experiment and stores the result of all 10 models
+def run_k_fold(path_to_data, num_folds, **config):
+    """ Does a k-fold experiment and stores the result of all 10 models
 
     Args:
         path_to_data (string): Path to the data directory
+        num_folds (int): Number of folds
         **config: batch_size (int): Size of the batches
                   num_epochs (int): Max number of train epochs
                   seq_len (int): Length of model input time series after processing
@@ -179,9 +180,9 @@ def run_k_fold(path_to_data, **config):
     """
     config['experiment_name'] = f'K_Fold_{datetime.now().time()}'.replace(':', '_')
 
-    for fold_i in range(0, 10):
+    for fold_i in range(0, num_folds):
         config['run_name'] = f'fold_{fold_i}'
-        config['k_fold'] = fold_i
+        config['k_fold'] = (fold_i, num_folds)
         run_config(path_to_data, **config)
 
 
@@ -196,6 +197,8 @@ def init_model(**config):
     Returns:
         (nn.Module): Model object
     """
+    assert [config['model_kwargs']['name'] in ['CNN1D', 'LSTM', 'RESNET']]
+
     # Calculate input feature dimension for model initialization
     in_features = 0
     for feature in config['features']['train']:
@@ -220,8 +223,6 @@ def init_model(**config):
                             num_classes=len(config['class_dict'].keys()),
                             num_layers=config['model_kwargs']['num_layers'],
                             out_features=config['model_kwargs']['start_size'])
-    else:
-        print(f'Unsupported model: {config["model"]["name"]}')
 
     return model
 
@@ -237,6 +238,7 @@ def get_datalaoders(path_to_data, batch_size, medal_id=None, use_synthetic=False
         features (dict): Dict containing the train and val/test features
         use_synthetic (bool): Use synthetic data for training
         class_dict (dict): Dict of type class mapping
+        k_fold (tuple): (fold_i (int), num_folds (int))
 
     Returns:
         train_loader (torch.utils.data.DataLoader)

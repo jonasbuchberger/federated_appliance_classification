@@ -24,7 +24,8 @@ TYPE_CLASS = {
 
 class BLOND(Dataset):
 
-    def __init__(self, fold, path_to_data, transform=None, medal_id=None, class_dict=TYPE_CLASS, use_synthetic=False, k_fold=None):
+    def __init__(self, fold, path_to_data, transform=None, medal_id=None, class_dict=TYPE_CLASS, use_synthetic=False,
+                 k_fold=None):
         """
 
         Args:
@@ -34,6 +35,7 @@ class BLOND(Dataset):
             medal_id (int): 1-14 for single medal or None for all
             class_dict (dict): Dict with the desired classes to use for training
             use_synthetic (bool): Use synthetic data for training
+            k_fold (tuple): (fold_i (int), num_folds (int))
         """
         self.transform = transform
         self.path_to_data = path_to_data
@@ -52,16 +54,17 @@ class BLOND(Dataset):
         # Filter labels for classes in class_dict
         self.labels = self.labels[self.labels['Type'].isin(self.class_dict.keys())]
 
-        # Create f-fold set up if desired with 10 folds
+        # Create k-fold set up
         if self.k_fold is not None:
-            kf = KFold(n_splits=10, random_state=1000, shuffle=True)
-            train_split, test_split = list(kf.split(self.labels))[self.k_fold]
-            df_train = self.labels.iloc[train_split]
-            df_train['fold'] = 'train'
-            df_test = self.labels.iloc[test_split]
-            df_test['fold'] = 'test'
-            df_val = self.labels.iloc[test_split]
-            df_val['fold'] = 'val'
+            fold_i, num_folds = self.k_fold
+            kf = KFold(n_splits=num_folds, random_state=1000, shuffle=True)
+            train_split, test_split = list(kf.split(self.labels))[fold_i]
+            df_train = self.labels.loc[train_split]
+            df_train.loc[train_split, 'fold'] = 'train'
+            df_test = self.labels.loc[test_split]
+            df_test.loc[test_split, 'fold'] = 'test'
+            df_val = self.labels.loc[test_split]
+            df_val.loc[test_split, 'fold'] = 'val'
             self.labels = df_train.append((df_val, df_test), ignore_index=True)
 
         # Calculate class weights
@@ -119,7 +122,6 @@ class BLOND(Dataset):
 
 
 if __name__ == '__main__':
-
     class_dict = {
         'Laptop': 0,
         'Monitor': 1,
@@ -127,6 +129,4 @@ if __name__ == '__main__':
     }
 
     path = os.path.join(ROOT_DIR, 'data')
-    #BLOND('train', path, k_fold=1)
-
-
+    # BLOND('train', path, k_fold=1)

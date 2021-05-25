@@ -4,7 +4,7 @@ from src.models.experiment_utils import get_datalaoders
 from src.federated.federated_utils import receive_broadcast, send_gather
 
 
-def run_client(rank):
+def run_client(rank, size):
     # Receive train config from master
     config = receive_broadcast()
     # Get initial model
@@ -18,12 +18,13 @@ def run_client(rank):
     optim = config['optim'](model.parameters(), **config['optim_kwargs'])
     scheduler = config['scheduler'](optim, **config['scheduler_kwargs'])
 
-    train_loader, val_loader, _ = get_datalaoders(path_to_data,
-                                                  config['batch_size'],
-                                                  use_synthetic=config['use_synthetic'],
-                                                  features=config['features'],
-                                                  medal_id=rank,
-                                                  class_dict=config['class_dict'])
+    train_loader, _, _ = get_datalaoders(path_to_data,
+                                         config['batch_size'],
+                                         use_synthetic=config['use_synthetic'],
+                                         features=config['features'],
+                                         #medal_id=rank,
+                                         k_fold=(rank-1, size-1),
+                                         class_dict=config['class_dict'])
 
     aggregation_rounds = int(total_epochs / local_epochs)
     for agg_i in range(0, aggregation_rounds):
@@ -50,5 +51,6 @@ def run_client(rank):
         send_gather(model)
 
         model = receive_broadcast()
-        optim = config['optim'](model.parameters(), scheduler.get_lr(), config['optim_kwargs']['weight_decay'])
+        lr = optim.param_groups[0]['lr']
+        optim = config['optim'](model.parameters(), lr, config['optim_kwargs']['weight_decay'])
         scheduler = config['scheduler'](optim, **config['scheduler_kwargs'])
