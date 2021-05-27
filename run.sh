@@ -1,5 +1,5 @@
 #!/bin/bash
-set -x
+set -e
 
 BASE_DIR="/mnt/c/Users/jonas/Documents/PyCharm"
 MASTER_ADDR="192.168.178.20"
@@ -20,11 +20,11 @@ then
     rsync -av -e "ssh -i ~/.ssh/id_rsa" "$BASE_DIR/federated_blond/data" ubuntu@"${IP_ARR[i]}":~/federated_blond/
   done
 elif [[ $1 == "run" ]]
-  sudo docker run -v /home/ubuntu/:/opt/project --network=host --rm --init --ipc=host -it federated_blond:Dockerfile python3 /opt/project/worker.py 0 "$WORLD_SIZE" &
+  sudo docker run -v /home/ubuntu/:/opt/project --network=host --rm --init --ipc=host -it federated_blond:Dockerfile python3 /opt/project/worker.py -r 0 "$WORLD_SIZE" &
 then
   for i in "${!IP_ARR[@]}"
   do
-     COMMAND="sudo docker run -v /home/ubuntu/:/opt/project --network=host --rm --init --ipc=host federated_blond:Dockerfile python3 /opt/project/worker.py $(($i + 1)) $WORLD_SIZE $MASTER_ADDR"
+     COMMAND="sudo docker run -v /home/ubuntu/:/opt/project --network=host --rm --init --ipc=host federated_blond:Dockerfile python3 /opt/project/worker.py -r $(($i + 1)) -m $MASTER_ADDR $WORLD_SIZE"
      ssh -i ~/.ssh/id_rsa ubuntu@"${IP_ARR[i]}" "$COMMAND" &
   done
 fi

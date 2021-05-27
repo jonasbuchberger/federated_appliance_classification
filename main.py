@@ -9,7 +9,6 @@ from src.features.features import *
 if __name__ == '__main__':
     path_to_data = os.path.join(ROOT_DIR, 'data')
 
-
     class_dict = {
         'Battery Charger': 0,
         'Daylight': 1,

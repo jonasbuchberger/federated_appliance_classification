@@ -1,4 +1,3 @@
-import os
 import warnings
 import argparse
 from src.data.dataset_blond import TYPE_CLASS
@@ -6,29 +5,19 @@ from src.federated.server import Server
 from src.federated.client import Client
 
 import torch
+import torch.multiprocessing as mp
 torch.set_num_threads(1)
 
 warnings.filterwarnings("ignore", category=UserWarning)
 from src.features.features import *
 
 
-if __name__ == '__main__':
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("rank", help="Rank of current worker.", type=int)
-    parser.add_argument("world_size", help="Total size of worker.", type=int)
-    parser.add_argument("--master_addr", help="IP of master.", type=str, required=False, default='127.0.0.1')
-
-    args = parser.parse_args()
-    world_size = args.world_size
-    rank = args.rank
-    master_addr = args.master_addr
-
+def run(rank, world_size, master_addr):
     if rank == 0:
         config = {
             'batch_size': 10,
-            'total_epochs': 2,
-            'local_epochs': 1,
+            'total_epochs': 30,
+            'local_epochs': 5,
             'seq_len': 190,
             'criterion': torch.nn.CrossEntropyLoss(),
             'optim': torch.optim.SGD,
@@ -53,9 +42,38 @@ if __name__ == '__main__':
         server = Server(world_size, config)
         server.init_process()
         server.run()
-
     else:
         client = Client(rank, world_size, master_addr=master_addr)
         client.init_process()
         client.run()
+
+
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("world_size", help="Total size of workers.", type=int)
+    parser.add_argument("-r", "--rank", help="Rank of current worker.", type=int, required=False, default=None)
+    parser.add_argument("-m", "--master_addr", help="IP of master.", type=str, required=False, default='127.0.0.1')
+
+    args = parser.parse_args()
+    world_size = args.world_size
+    rank = args.rank
+    master_addr = args.master_addr
+
+    if rank is None:
+        processes = []
+        mp.set_start_method("spawn")
+        for rank in range(0, world_size):
+            p = mp.Process(target=run, args=(rank, world_size, master_addr))
+            print(f'Started worker {rank}.')
+            p.start()
+            processes.append(p)
+
+        for p in processes:
+            p.join()
+    else:
+        run(rank, world_size, master_addr)
+
+
+
 
