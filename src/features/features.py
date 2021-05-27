@@ -174,11 +174,11 @@ class Spectrogram(object):
             spec = self.torch_spec(current_in)
         except RuntimeError:
             spec, _ = librosa.core.spectrum._spectrogram(current_in.numpy(),
-                                                      n_fft=self.n_fft,
-                                                      hop_length=self.hop_length,
-                                                      center=True,
-                                                      pad_mode="reflect",
-                                                      power=2.0)
+                                                         n_fft=self.n_fft,
+                                                         hop_length=self.hop_length,
+                                                         center=True,
+                                                         pad_mode="reflect",
+                                                         power=2.0)
             spec = torch.as_tensor(spec)
 
         if features is None:
@@ -198,6 +198,7 @@ class MelSpectrogram(object):
             net_frequency (int): Frequency of the net 50Hz or 60Hz
             measurement_frequency (int): Frequency of the measurements
         """
+        self.measurement_frequency = measurement_frequency
         self.n_fft = int(measurement_frequency / net_frequency) * 2 - 1
         self.hop_length = int((self.n_fft / 2) + 1)
         self.torch_mel_spec = torchaudio.transforms.MelSpectrogram(sample_rate=measurement_frequency, n_fft=self.n_fft,
@@ -241,6 +242,7 @@ class MFCC(object):
             net_frequency (int): Frequency of the net 50Hz or 60Hz
             measurement_frequency (int): Frequency of the measurements
         """
+        self.measurement_frequency = measurement_frequency
         self.n_fft = int(measurement_frequency / net_frequency) * 2 - 1
         self.hop_length = int((self.n_fft / 2) + 1)
         self.torch_mfcc = torchaudio.transforms.MFCC(sample_rate=measurement_frequency, n_mfcc=64,
@@ -256,7 +258,7 @@ class MFCC(object):
             mfcc = self.torch_mfcc(current_in)
         except RuntimeError:
             mfcc = librosa.feature.mfcc(y=current_in.numpy(),
-                                        sr=measurement_frequency,
+                                        sr=self.measurement_frequency,
                                         n_mfcc=64,
                                         hop_length=self.hop_length,
                                         n_fft=self.n_fft,
