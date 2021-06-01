@@ -1,3 +1,6 @@
+import torch
+torch.set_num_threads(1)
+
 import os
 import warnings
 from src.utils import ROOT_DIR
@@ -7,6 +10,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 from src.features.features import *
 
 if __name__ == '__main__':
+
     path_to_data = os.path.join(ROOT_DIR, 'data')
 
     class_dict = {
@@ -51,8 +55,9 @@ if __name__ == '__main__':
     }
 
     #for m in ['CNN1D', 'LSTM', 'RESNET']:
-    #    config['model_kwargs']['name'] = m
-    #    run_experiment(path_to_data, **config)
+    for m in ['LSTM', 'RESNET']:
+        config['model_kwargs']['name'] = m
+        run_experiment(path_to_data, **config)
 
     feature_dict = {
         'train': [RandomAugment(measurement_frequency=6400),
@@ -61,7 +66,7 @@ if __name__ == '__main__':
                 MFCC(measurement_frequency=6400)]
     }
     config['features'] = feature_dict
-    run_config(path_to_data, **config)
+    #run_config(path_to_data, **config)
     #run_k_fold(path_to_data, 10, **config)
 
 

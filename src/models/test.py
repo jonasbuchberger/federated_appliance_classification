@@ -18,7 +18,7 @@ def test(model, test_loader, **config):
         **config: Dictionary of train parameters
     """
 
-    #device = ("cuda:0" if torch.cuda.is_available() else "cpu")
+    # device = ("cuda:0" if torch.cuda.is_available() else "cpu")
     device = 'cpu'
 
     class_dict = test_loader.dataset.class_dict

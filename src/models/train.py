@@ -19,7 +19,7 @@ def train(model, train_loader, val_loader, **config):
         (string): Path of the trained model
     """
 
-    #device = ("cuda:0" if torch.cuda.is_available() else "cpu")
+    # device = ("cuda:0" if torch.cuda.is_available() else "cpu")
     device = 'cpu'
 
     # Getting parameters from train_config
@@ -107,7 +107,7 @@ def train(model, train_loader, val_loader, **config):
 
         scheduler.step(epoch_f1)
 
-    logger.add_graph(model.cpu(), x[0].unsqueeze(0))
+    #logger.add_graph(model.cpu(), x.cpu()[0].unsqueeze(0))
     logger.add_hparams({'lr': config['optim_kwargs']['lr'],
                         'weight_decay': config['optim_kwargs']['weight_decay'],
                         'batch_size': config['batch_size'],

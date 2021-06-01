@@ -1,12 +1,11 @@
+import torch
+torch.set_num_threads(1)
 import warnings
 import argparse
 from src.data.dataset_blond import TYPE_CLASS
 from src.federated.server import Server
 from src.federated.client import Client
-
-import torch
 import torch.multiprocessing as mp
-torch.set_num_threads(1)
 
 warnings.filterwarnings("ignore", category=UserWarning)
 from src.features.features import *
@@ -49,6 +48,8 @@ def run(rank, world_size, master_addr):
 
 
 if __name__ == '__main__':
+
+    torch.set_num_threads(1)
 
     parser = argparse.ArgumentParser()
     parser.add_argument("world_size", help="Total size of workers.", type=int)
