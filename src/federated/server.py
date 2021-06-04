@@ -2,6 +2,7 @@ import os
 import json
 import time
 import torch
+import datetime
 from tqdm import tqdm
 import torch.distributed as dist
 from sklearn.metrics import precision_recall_fscore_support
@@ -42,7 +43,12 @@ class Server:
         if 'tcp' in self.master_addr:
             init_method = f'{self.master_addr}:{self.master_port}'
 
-        dist.init_process_group(self.backend, rank=0, world_size=self.world_size, init_method=init_method)
+        dist.init_process_group(self.backend,
+                                rank=0,
+                                world_size=self.world_size,
+                                init_method=init_method,
+                                #timeout=datetime.timedelta(0, 60),
+                                )
 
     def _setup_experiment(self, config):
 

@@ -1,4 +1,5 @@
 import os
+import datetime
 import torch.distributed as dist
 from src.utils import ROOT_DIR
 from src.models.experiment_utils import get_datalaoders
@@ -37,7 +38,12 @@ class Client:
         if 'tcp' in self.master_addr:
             init_method = f'{self.master_addr}:{self.master_port}'
 
-        dist.init_process_group(self.backend, rank=self.rank, world_size=self.world_size, init_method=init_method)
+        dist.init_process_group(self.backend,
+                                rank=self.rank,
+                                world_size=self.world_size,
+                                init_method=init_method,
+                                #timeout=datetime.timedelta(0, 60),
+                                )
 
     def run(self):
         # Receive train config from master

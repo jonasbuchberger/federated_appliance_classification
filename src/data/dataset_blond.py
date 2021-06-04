@@ -8,6 +8,7 @@ from sklearn.model_selection import KFold
 
 from src.utils import ROOT_DIR
 
+
 TYPE_CLASS = {
     'Battery Charger': 0,
     'Daylight': 1,
@@ -56,6 +57,7 @@ class BLOND(Dataset):
 
         # Create k-fold set up
         if self.k_fold is not None:
+            # self.labels = self.labels[self.labels['fold'] == 'train']
             fold_i, num_folds = self.k_fold
             kf = KFold(n_splits=num_folds, random_state=1000, shuffle=True)
             train_split, test_split = list(kf.split(self.labels))[fold_i]
@@ -103,13 +105,13 @@ class BLOND(Dataset):
         current = torch.as_tensor(f['data']['block0_values'][:, 1])
         voltage = torch.as_tensor(f['data']['block0_values'][:, 0])
 
-        if not row['synthetic']:
-            # Shifts event window to start with a new cycle
-            tmp = (current - torch.mean(current)) / torch.std(current)
-            idx = torch.where(torch.diff(torch.signbit(tmp[:250])))[0][0]
+        # if not row['synthetic']:
+        # Shifts event window to start with a new cycle
+        tmp = (current - torch.mean(current)) / torch.std(current)
+        idx = torch.where(torch.diff(torch.signbit(tmp[:250])))[0][0]
 
-            current = current[idx: 24576 + idx]
-            voltage = voltage[idx: 24576 + idx]
+        current = current[idx: 24576 + idx]
+        voltage = voltage[idx: 24576 + idx]
 
         # Apply feature transform on current/voltage, if no transform applied return (current, voltage, class)
         class_num = int(row['Class'])

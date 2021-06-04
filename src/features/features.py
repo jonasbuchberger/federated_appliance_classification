@@ -5,7 +5,7 @@ import librosa
 
 class ACPower(object):
 
-    def __init__(self, net_frequency=50, measurement_frequency=50000):
+    def __init__(self, net_frequency=50, measurement_frequency=6400):
         """ Calculates Real, Apparent, Reactive and Distortion Power.
 
         Args:
@@ -49,7 +49,7 @@ class ACPower(object):
 
 class DCS(object):
 
-    def __init__(self, net_frequency=50, measurement_frequency=50000):
+    def __init__(self, net_frequency=50, measurement_frequency=6400):
         """ Calculates Device Current Signature (DCS).
 
         Args:
@@ -92,7 +92,7 @@ class DCS(object):
 
 class COT(object):
 
-    def __init__(self, net_frequency=50, measurement_frequency=50000):
+    def __init__(self, net_frequency=50, measurement_frequency=6400):
         """ Calculates Current Over Time (COT).
 
         Args:
@@ -121,7 +121,7 @@ class COT(object):
 
 class AOT(object):
 
-    def __init__(self, net_frequency=50, measurement_frequency=50000):
+    def __init__(self, net_frequency=50, measurement_frequency=6400):
         """ Calculates Admittance Over Time (AOT).
 
         Args:
@@ -154,7 +154,7 @@ class AOT(object):
 
 class Spectrogram(object):
 
-    def __init__(self, net_frequency=50, measurement_frequency=50000):
+    def __init__(self, net_frequency=50, measurement_frequency=6400):
         """ Calculates the Mel Spectrogram of an event.
 
         Args:
@@ -191,7 +191,7 @@ class Spectrogram(object):
 
 class MelSpectrogram(object):
 
-    def __init__(self, net_frequency=50, measurement_frequency=50000):
+    def __init__(self, net_frequency=50, measurement_frequency=6400):
         """ Calculates the Mel Spectrogram of an event.
 
         Args:
@@ -235,7 +235,7 @@ class MelSpectrogram(object):
 
 class MFCC(object):
 
-    def __init__(self, net_frequency=50, measurement_frequency=50000):
+    def __init__(self, net_frequency=50, measurement_frequency=6400):
         """ Calculates the  Mel-frequency cepstrum coefficients of an event.
 
         Args:
@@ -276,7 +276,7 @@ class MFCC(object):
 
 class RandomAugment(object):
 
-    def __init__(self, net_frequency=50, measurement_frequency=50000, p=0.8):
+    def __init__(self, net_frequency=50, measurement_frequency=6400, p=0.8):
         """ Randomly applies an augmentation on the window. PhaseShift (Left, Right) or HalfPhaseFlip (Left, Right).
 
         Args:
