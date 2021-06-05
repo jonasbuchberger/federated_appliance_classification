@@ -1,10 +1,11 @@
 #!/bin/bash
 set -e
 
+declare -a IP_ARR=("172.24.18.222" "172.24.18.223" "172.24.18.246" "172.24.18.247" "172.24.18.248")
 MASTER_ADDR="172.24.18.224"
-WORLD_SIZE=3
-declare -a IP_ARR=("172.24.18.223" "172.24.18.222")
-
+WORLD_SIZE=${#IP_ARR[@]}
+WORLD_SIZE=$(($WORLD_SIZE + 1))
+echo $WORLD_SIZE
 if [[ $1 == "kill" ]]
 then
   sudo service docker restart &
