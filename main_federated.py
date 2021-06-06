@@ -31,10 +31,10 @@ def run(rank, world_size, master_addr):
         }
 
         feature_dict = {
-            'train': [RandomAugment(measurement_frequency=6400),
-                      MFCC(measurement_frequency=6400)],
+            'train': [RandomAugment(),
+                      MFCC()],
             'val': [RandomAugment(measurement_frequency=6400, p=0),
-                    MFCC(measurement_frequency=6400)]
+                    MFCC()]
         }
         config['features'] = feature_dict
 
@@ -48,8 +48,6 @@ def run(rank, world_size, master_addr):
 
 
 if __name__ == '__main__':
-
-    torch.set_num_threads(1)
 
     parser = argparse.ArgumentParser()
     parser.add_argument("world_size", help="Total size of workers.", type=int)

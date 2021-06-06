@@ -116,8 +116,8 @@ def run_experiment(path_to_data, num_experiments=6, **config):
 
     # Starting dict to build up feature chain
     best_feature_dict = {
-        'train': [RandomAugment(measurement_frequency=6400)],
-        'val': [RandomAugment(measurement_frequency=6400, p=0)]
+        'train': [RandomAugment(measurement_frequency=measurement_frequency)],
+        'val': [RandomAugment(measurement_frequency=measurement_frequency, p=0)]
     }
 
     best_feature_f1 = 0
@@ -143,7 +143,7 @@ def run_experiment(path_to_data, num_experiments=6, **config):
                 if best_run_f1 < f1:
                     best_run_f1 = f1
 
-            run_f1_array[j] = f1
+            run_f1_array[j] = best_run_f1
 
         best_feature = np.argmax(run_f1_array)
         if best_feature_f1 < np.max(run_f1_array):

@@ -68,7 +68,9 @@ class Server:
             config['run_name'] = f"lr-{config['optim_kwargs']['lr']}_" \
                                  f"wd-{config['optim_kwargs']['weight_decay']}_" \
                                  f"nl-{config['model_kwargs']['num_layers']}_" \
-                                 f"ss-{config['model_kwargs']['start_size']}"
+                                 f"ss-{config['model_kwargs']['start_size']}_" \
+                                 f"te-{config['total_epochs']}_" \
+                                 f"le-{config['local_epochs']}"
 
         return config
 

@@ -229,8 +229,8 @@ def create_synthetic_data(path_to_data, generator, class_dict, num_rounds=1):
     # Append labels of real and synthetic data
     df['fold'] = 'train'
     df['synthetic'] = 1
-    if os.path.isfile('data/events_syn.csv'):
-        df_2 = pd.read_csv(os.path.join(ROOT_DIR, 'data/events_syn'), index_col=0)
+    if os.path.isfile(os.path.join(ROOT_DIR, 'data/events_syn.csv')):
+        df_2 = pd.read_csv(os.path.join(ROOT_DIR, 'data/events_syn.csv'), index_col=0)
     else:
         df_2 = pd.read_csv(os.path.join(ROOT_DIR, 'data/events_syn_base.csv'), index_col=0)
         df_2['synthetic'] = 0
@@ -247,15 +247,15 @@ if __name__ == '__main__':
         'Dev Board': 2,
         #'Laptop': 3,
         #'Monitor': 4,
-        'PC': 5,
-        'Printer': 6,
-        'Projector': 7,
-        'Screen Motor': 8,
-        'USB Charger': 9
+        #'PC': 5,
+        #'Printer': 6,
+        #'Projector': 7,
+        #'Screen Motor': 8,
+        #'USB Charger': 9
     }
     for class_i in list(class_dict.keys()):
         path_to_model = os.path.join(ROOT_DIR, 'notebooks', 'generator', f'generator_model_{class_i}.pth')
         generator = Generator()
         generator.load_state_dict(torch.load(path_to_model))
-
-        create_synthetic_data(path_to_data, generator, class_dict, 4)
+        tmp_dict = {f'{class_i}': class_dict[class_i]}
+        create_synthetic_data(path_to_data, generator, tmp_dict, 4)

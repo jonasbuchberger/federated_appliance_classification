@@ -57,7 +57,10 @@ class BLOND(Dataset):
 
         # Create k-fold set up
         if self.k_fold is not None:
-            # self.labels = self.labels[self.labels['fold'] == 'train']
+            # -------------------------------------------------------
+            self.labels = self.labels[self.labels['fold'] == 'train']
+            self.labels.index = range(len(self.labels))
+            # -------------------------------------------------------
             fold_i, num_folds = self.k_fold
             kf = KFold(n_splits=num_folds, random_state=1000, shuffle=True)
             train_split, test_split = list(kf.split(self.labels))[fold_i]
@@ -131,4 +134,4 @@ if __name__ == '__main__':
     }
 
     path = os.path.join(ROOT_DIR, 'data')
-    # BLOND('train', path, k_fold=1)
+    BLOND('train', path, k_fold=(1, 10))
