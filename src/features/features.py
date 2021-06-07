@@ -214,7 +214,7 @@ class MelSpectrogram(object):
             mel_spec = self.torch_mel_spec(current_in)
         except RuntimeError:
             mel_spec = librosa.feature.melspectrogram(current_in.numpy(),
-                                                      sr=measurement_frequency,
+                                                      sr=self.measurement_frequency,
                                                       n_fft=self.n_fft,
                                                       hop_length=self.hop_length,
                                                       center=True,
