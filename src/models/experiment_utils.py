@@ -6,7 +6,7 @@ from copy import deepcopy
 from torch.utils.data import WeightedRandomSampler
 from torchvision.transforms import Compose
 from src.data.dataset_blond import BLOND, TYPE_CLASS
-from src.models.models import BlondConvNet, BlondLstmNet, BlondResNet
+from src.models.models import BlondConvNet, BlondLstmNet, BlondResNet, BlondDenseNet
 from src.models.test import test
 from src.models.train import train
 from src.models.design_of_experiment import lh
@@ -197,7 +197,7 @@ def init_model(**config):
     Returns:
         (nn.Module): Model object
     """
-    assert [config['model_kwargs']['name'] in ['CNN1D', 'LSTM', 'RESNET']]
+    assert [config['model_kwargs']['name'] in ['CNN1D', 'LSTM', 'RESNET', 'DENSE']]
 
     # Calculate input feature dimension for model initialization
     in_features = 0
@@ -219,7 +219,11 @@ def init_model(**config):
                              hidden_layer_size=config['model_kwargs']['start_size'])
     elif config['model_kwargs']['name'] == 'RESNET':
         model = BlondResNet(in_features=in_features,
-                            seq_len=config['seq_len'],
+                            num_classes=len(config['class_dict'].keys()),
+                            num_layers=config['model_kwargs']['num_layers'],
+                            out_features=config['model_kwargs']['start_size'])
+    elif config['model_kwargs']['name'] == 'DENSE':
+        model = BlondDenseNet(in_features=in_features,
                             num_classes=len(config['class_dict'].keys()),
                             num_layers=config['model_kwargs']['num_layers'],
                             out_features=config['model_kwargs']['start_size'])

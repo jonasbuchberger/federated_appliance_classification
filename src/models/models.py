@@ -119,7 +119,6 @@ class BlondLstmNet(nn.Module):
         self.classifier = BlondNetMLP(seq_len, hidden_layer_size, num_classes, max(1, int(num_layers / 2)))
 
     def forward(self, x):
-
         h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_layer_size).requires_grad_()
         c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_layer_size).requires_grad_()
 
@@ -133,11 +132,10 @@ class BlondLstmNet(nn.Module):
 
 class BlondResNet(nn.Module):
 
-    def __init__(self, in_features, seq_len, num_classes, out_features=10, num_layers=1):
+    def __init__(self, in_features, num_classes, out_features=10, num_layers=1):
         """
         Args:
             in_features (int): Number of input features
-            seq_len (int): Length of input series
             num_classes (int): Number of targets
             out_features (int): Size of first out_channels of convolutional block
             num_layers (int): Number of stacked layer blocks
@@ -146,11 +144,10 @@ class BlondResNet(nn.Module):
 
         self.layers = nn.ModuleList()
         for i in range(0, num_layers):
-            layer = BlondResNetLayer(in_features, seq_len, out_features)
+            layer = BlondResNetLayer(in_features, out_features)
             self.layers.append(layer)
 
             # Assign values for next layer
-            seq_len = layer.seq_len
             in_features = out_features
             out_features = int(out_features * 1.5)
 
@@ -169,11 +166,10 @@ class BlondResNet(nn.Module):
 
 class BlondResNetLayer(nn.Module):
 
-    def __init__(self, in_features, seq_len, out_features):
+    def __init__(self, in_features, out_features):
         """
         Args:
             in_features (int): Number of input features
-            seq_len (int): Length of input series
             out_features (int): Size of hidden layer
         """
         super(BlondResNetLayer, self).__init__()
@@ -193,25 +189,6 @@ class BlondResNetLayer(nn.Module):
 
         self.relu = nn.ReLU()
 
-        self.seq_len = self._calc_dims(self.layer, seq_len)
-
-    def _calc_dims(self, layer, seq_len):
-        """
-        Args:
-            layer (nn.Sequential): Current layer
-            seq_len (int): Length of input series
-
-        Returns:
-            (int): Series length of the layer output
-        """
-        seq_len = int((seq_len + (2 * layer[0].padding[0]) - layer[0].dilation[0] * (layer[0].kernel_size[0] - 1) - 1) /
-                      layer[0].stride[0] + 1)
-
-        seq_len = int((seq_len + (2 * layer[3].padding[0]) - layer[3].dilation[0] * (layer[3].kernel_size[0] - 1) - 1) /
-                      layer[3].stride[0] + 1)
-
-        return seq_len
-
     def forward(self, x):
         identity = x
         x = self.layer(x)
@@ -223,14 +200,99 @@ class BlondResNetLayer(nn.Module):
         return x
 
 
+class BlondDenseNet(nn.Module):
+
+    def __init__(self, in_features, num_classes, out_features=10, num_layers=1):
+        """
+        Args:
+            in_features (int): Number of input features
+            out_features (int): Size of first out_channels of convolutional block
+            num_layers (int): Number of stacked layer blocks
+        """
+        super(BlondDenseNet, self).__init__()
+
+        self.layers = nn.ModuleList()
+        for i in range(0, num_layers):
+            layer = BlondDenseLayer(in_features, out_features)
+            self.layers.append(layer)
+
+            if i < num_layers-1:
+                transition = BlondDenseTransitionLayer(3 * out_features, 64)
+                self.layers.append(transition)
+
+                in_features = 64
+                out_features = int(out_features * 1.5)
+
+        self.global_avg = nn.AdaptiveAvgPool1d(1)
+        self.classifier = BlondNetMLP(1, 3 * out_features, num_classes, max(1, int(num_layers / 2)))
+
+    def forward(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        x = self.global_avg(x)
+        x = x.reshape(x.size(0), -1)
+        x = self.classifier(x)
+
+        return x
+
+
+class BlondDenseLayer(nn.Module):
+    """
+    Args:
+        in_features (int): Number of input features
+        out_features (int): Size of out_channels of convolutional block
+    """
+
+    def __init__(self, in_features, out_features):
+        super(BlondDenseLayer, self).__init__()
+
+        self.activation = nn.ReLU()
+
+        self.bn = nn.BatchNorm1d(in_features)
+
+        self.conv1 = nn.Conv1d(in_features, out_features, kernel_size=3, stride=1, padding=1)
+        self.conv2 = nn.Conv1d(out_features, out_features, kernel_size=3, stride=1, padding=1)
+        self.conv3 = nn.Conv1d(2 * out_features, out_features, kernel_size=3, stride=1, padding=1)
+
+    def forward(self, x):
+        bn = self.bn(x)
+        conv1 = self.activation(self.conv1(bn))
+        conv2 = self.activation(self.conv2(conv1))
+        c2_dense = self.activation(torch.cat([conv1, conv2], 1))
+        conv3 = self.activation(self.conv3(c2_dense))
+        c3_dense = self.activation(torch.cat([conv1, conv2, conv3], 1))
+
+        return c3_dense
+
+
+class BlondDenseTransitionLayer(nn.Module):
+    """
+   Args:
+       in_features (int): Number of input features
+       out_features (int): Size of out_channels of convolutional block
+   """
+    def __init__(self, in_features, out_features):
+
+        super(BlondDenseTransitionLayer, self).__init__()
+
+        self.transition = nn.Sequential(nn.BatchNorm1d(in_features),
+                                        nn.ReLU(),
+                                        nn.Conv1d(in_features, out_features, kernel_size=1, stride=1, bias=False),
+                                        nn.AvgPool1d(kernel_size=2, stride=2))
+
+    def forward(self, x):
+        x = self.transition(x)
+        return x
+
 if __name__ == '__main__':
-    in_features = 1100
+    in_features = 64
     seq_len = 190
     bs = 7
 
     model = BlondLstmNet(in_features, seq_len, 5)
     model1 = BlondConvNet(in_features, seq_len, 5)
-    model2 = BlondResNet(in_features, seq_len, 5, num_layers=4, out_features=28)
+    model2 = BlondResNet(in_features, 5, num_layers=4, out_features=28)
+    model3 = BlondDenseNet(in_features, 5, num_layers=4, out_features=32)
 
     x = torch.rand((bs, in_features, seq_len))
 
@@ -241,7 +303,8 @@ if __name__ == '__main__':
     print(pred.shape)
     pred = model2(x)
     print(pred.shape)
-
+    pred = model3(x)
+    print(pred.shape)
 
     """
     from sklearn.metrics import precision_recall_fscore_support

@@ -47,14 +47,14 @@ if __name__ == '__main__':
         'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau,
         'scheduler_kwargs': {'factor': 0.1, 'patience': 3, 'mode': 'max'},
         'early_stopping': 5,
-        'model_kwargs': {'name': 'LSTM', 'num_layers': 2, 'start_size': 28},
+        'model_kwargs': {'name': 'DENSE', 'num_layers': 4, 'start_size': 28},
         'class_dict': class_dict,
         'features': None,
         'experiment_name': None,
         'use_synthetic': True,
     }
 
-    for m in ['CNN1D', 'LSTM', 'RESNET']:
+    for m in ['DENSE']:
         config['model_kwargs']['name'] = m
         run_experiment(path_to_data, **config)
 

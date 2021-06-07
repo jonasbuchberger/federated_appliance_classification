@@ -47,7 +47,7 @@ class Server:
                                 rank=0,
                                 world_size=self.world_size,
                                 init_method=init_method,
-                                #timeout=datetime.timedelta(0, 60),
+                                timeout=datetime.timedelta(0, self.config['local_epochs'] * 1800),
                                 )
 
     def _setup_experiment(self, config):
