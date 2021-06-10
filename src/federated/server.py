@@ -63,7 +63,10 @@ class Server:
                                         f"{config['optim'].__name__}_" \
                                         f"{config['criterion'].__class__.__name__}_" \
                                         f"CLASS_{len(config['class_dict'].keys())}_" \
-                                        f"{feature_string}_6400_Synthetic"
+                                        f"{feature_string}"
+
+            if config['use_synthetic']:
+                config['experiment_name'] = f"{config['experiment_name']}_Syn"
 
             config['run_name'] = f"lr-{config['optim_kwargs']['lr']}_" \
                                  f"wd-{config['optim_kwargs']['weight_decay']}_" \

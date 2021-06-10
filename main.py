@@ -47,11 +47,11 @@ if __name__ == '__main__':
         'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau,
         'scheduler_kwargs': {'factor': 0.1, 'patience': 3, 'mode': 'max'},
         'early_stopping': 5,
-        'model_kwargs': {'name': 'DENSE', 'num_layers': 4, 'start_size': 28},
+        'model_kwargs': {'name': 'DENSE', 'num_layers': 2, 'start_size': 15},
         'class_dict': class_dict,
         'features': None,
         'experiment_name': None,
-        'use_synthetic': True,
+        'use_synthetic': False,
     }
 
     for m in ['DENSE']:
@@ -60,9 +60,9 @@ if __name__ == '__main__':
 
     feature_dict = {
         'train': [RandomAugment(),
-                  MFCC()],
+                  Spectrogram()],
         'val': [RandomAugment(p=0),
-                MFCC()]
+                Spectrogram()]
     }
     config['features'] = feature_dict
     #run_config(path_to_data, **config)
