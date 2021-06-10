@@ -216,15 +216,15 @@ class BlondDenseNet(nn.Module):
             layer = BlondDenseLayer(in_features, out_features)
             self.layers.append(layer)
 
-            if i < num_layers-1:
-                transition = BlondDenseTransitionLayer(3 * out_features, 64)
+            if i < num_layers - 1:
+                transition = BlondDenseTransitionLayer(in_features + 2 * out_features, 64)
                 self.layers.append(transition)
 
                 in_features = 64
                 out_features = int(out_features * 1.5)
 
         self.global_avg = nn.AdaptiveAvgPool1d(1)
-        self.classifier = BlondNetMLP(1, 3 * out_features, num_classes, max(1, int(num_layers / 2)))
+        self.classifier = BlondNetMLP(1, in_features + 2 * out_features, num_classes, max(1, int(num_layers / 2)))
 
     def forward(self, x):
         for layer in self.layers:
@@ -246,23 +246,26 @@ class BlondDenseLayer(nn.Module):
     def __init__(self, in_features, out_features):
         super(BlondDenseLayer, self).__init__()
 
-        self.activation = nn.ReLU()
+        self.layer1 = nn.Sequential(nn.BatchNorm1d(in_features),
+                                    nn.ReLU(),
+                                    nn.Conv1d(in_features, out_features, kernel_size=1, stride=1, padding=0),
+                                    nn.BatchNorm1d(out_features),
+                                    nn.ReLU(),
+                                    nn.Conv1d(out_features, out_features, kernel_size=3, stride=1, padding=1))
 
-        self.bn = nn.BatchNorm1d(in_features)
-
-        self.conv1 = nn.Conv1d(in_features, out_features, kernel_size=3, stride=1, padding=1)
-        self.conv2 = nn.Conv1d(out_features, out_features, kernel_size=3, stride=1, padding=1)
-        self.conv3 = nn.Conv1d(2 * out_features, out_features, kernel_size=3, stride=1, padding=1)
-
+        in_features = in_features + out_features
+        self.layer2 = nn.Sequential(nn.BatchNorm1d(in_features),
+                                    nn.ReLU(),
+                                    nn.Conv1d(in_features, out_features, kernel_size=1, stride=1, padding=0),
+                                    nn.BatchNorm1d(out_features),
+                                    nn.ReLU(),
+                                    nn.Conv1d(out_features, out_features, kernel_size=3, stride=1, padding=1))
     def forward(self, x):
-        bn = self.bn(x)
-        conv1 = self.activation(self.conv1(bn))
-        conv2 = self.activation(self.conv2(conv1))
-        c2_dense = self.activation(torch.cat([conv1, conv2], 1))
-        conv3 = self.activation(self.conv3(c2_dense))
-        c3_dense = self.activation(torch.cat([conv1, conv2, conv3], 1))
-
-        return c3_dense
+        lay1 = self.layer1(x)
+        x1 = torch.cat([x, lay1], 1)
+        lay2 = self.layer2(x1)
+        out = torch.cat([x, lay1, lay2], 1)
+        return out
 
 
 class BlondDenseTransitionLayer(nn.Module):
@@ -283,6 +286,7 @@ class BlondDenseTransitionLayer(nn.Module):
     def forward(self, x):
         x = self.transition(x)
         return x
+
 
 if __name__ == '__main__':
     in_features = 64
