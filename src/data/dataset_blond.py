@@ -19,7 +19,8 @@ TYPE_CLASS = {
     'Printer': 6,
     'Projector': 7,
     'Screen Motor': 8,
-    'USB Charger': 9
+    'USB Charger': 9,
+    #'Multi-Toll': 10
 }
 
 
@@ -101,20 +102,20 @@ class BLOND(Dataset):
 
         folder = 'synthetic' if row['synthetic'] else 'event'
         path = os.path.join(self.path_to_data, f'{folder}_snippets/medal-{row["Medal"]}')
-        file_name = os.path.join(f'{row["Medal"]}_{row["Socket"]}_{row["Appliance"]}_{row["Timestamp"]}.h5')
+        file_name = f'{row["Medal"]}_{row["Socket"]}_{row["Appliance"]}_{row["Timestamp"]}.h5'
         f = h5py.File(os.path.join(path, file_name), 'r')
 
         # Cut length of measurement window
         current = torch.as_tensor(f['data']['block0_values'][:, 1])
         voltage = torch.as_tensor(f['data']['block0_values'][:, 0])
 
-        # if not row['synthetic']:
         # Shifts event window to start with a new cycle
-        tmp = (current - torch.mean(current)) / torch.std(current)
-        idx = torch.where(torch.diff(torch.signbit(tmp[:250])))[0][0]
+        idx = torch.where(torch.diff(torch.signbit(current[:1000])))[0][0]
 
         current = current[idx: 24576 + idx]
         voltage = voltage[idx: 24576 + idx]
+
+        assert (len(current) == 24576)
 
         # Apply feature transform on current/voltage, if no transform applied return (current, voltage, class)
         class_num = int(row['Class'])

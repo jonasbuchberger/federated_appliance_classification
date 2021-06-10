@@ -275,8 +275,8 @@ def get_datalaoders(path_to_data, batch_size, medal_id=None, use_synthetic=False
                      class_dict=class_dict,
                      k_fold=k_fold)
 
-    if len(set(train_set.labels['Type'])) > 1:
-        sampler = WeightedRandomSampler(train_set.labels['Weight'].values, len(train_set), replacement=True)
+    #if len(set(train_set.labels['Type'])) > 1:
+    #    sampler = WeightedRandomSampler(train_set.labels['Weight'].values, len(train_set), replacement=True)
 
     train_loader = torch.utils.data.DataLoader(
         train_set,
@@ -310,5 +310,19 @@ if __name__ == '__main__':
     }
 
     path = os.path.join(ROOT_DIR, 'data')
+    from src.features.features import ACPower
 
-    t, _, _ = get_datalaoders(path, 10, medal_id=2)
+    feature_dict = {
+        'train': [RandomAugment(),
+                  ACPower()],
+        'val': [RandomAugment(p=0),
+                ACPower()]
+    }
+
+    t, v, te = get_datalaoders(path, 128, features=feature_dict)
+    for data in t:
+        feature, cl = data
+    for data in v:
+        feature, cl = data
+    for data in te:
+        feature, cl = data
