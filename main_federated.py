@@ -27,7 +27,7 @@ def run(rank, world_size, master_addr):
             'class_dict': TYPE_CLASS,
             'features': None,
             'experiment_name': None,
-            'use_synthetic': True,
+            'use_synthetic': False,
         }
 
         feature_dict = {

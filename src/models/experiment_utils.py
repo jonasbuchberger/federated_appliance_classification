@@ -233,7 +233,7 @@ def init_model(**config):
 
 
 def get_datalaoders(path_to_data, batch_size, medal_id=None, use_synthetic=False, features=None, class_dict=TYPE_CLASS,
-                    k_fold=None):
+                    k_fold=None, r_split=None):
     """ Returns data loaders
 
     Args:
@@ -244,6 +244,7 @@ def get_datalaoders(path_to_data, batch_size, medal_id=None, use_synthetic=False
         use_synthetic (bool): Use synthetic data for training
         class_dict (dict): Dict of type class mapping
         k_fold (tuple): (fold_i (int), num_folds (int))
+        r_split (tuple): (split_i (int), num_splits (int))
 
     Returns:
         train_loader (torch.utils.data.DataLoader)
@@ -259,7 +260,8 @@ def get_datalaoders(path_to_data, batch_size, medal_id=None, use_synthetic=False
                       medal_id=medal_id,
                       use_synthetic=use_synthetic,
                       class_dict=class_dict,
-                      k_fold=k_fold)
+                      k_fold=k_fold,
+                      r_split=r_split)
     val_set = BLOND(path_to_data=path_to_data,
                     fold='val',
                     transform=Compose(features['val']) if features is not None else features,
@@ -275,8 +277,8 @@ def get_datalaoders(path_to_data, batch_size, medal_id=None, use_synthetic=False
                      class_dict=class_dict,
                      k_fold=k_fold)
 
-    #if len(set(train_set.labels['Type'])) > 1:
-    #    sampler = WeightedRandomSampler(train_set.labels['Weight'].values, len(train_set), replacement=True)
+    if len(set(train_set.labels['Type'])) > 1:
+        sampler = WeightedRandomSampler(train_set.labels['Weight'].values, len(train_set), replacement=True)
 
     train_loader = torch.utils.data.DataLoader(
         train_set,

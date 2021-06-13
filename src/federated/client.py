@@ -63,7 +63,7 @@ class Client:
                                              use_synthetic=config['use_synthetic'],
                                              features=config['features'],
                                              #medal_id=self.rank,
-                                             k_fold=(self.rank-1, self.world_size-1),
+                                             r_split=(self.rank-1, self.world_size-1),
                                              class_dict=config['class_dict'])
 
         aggregation_rounds = int(total_epochs / local_epochs)

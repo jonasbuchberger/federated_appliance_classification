@@ -2,6 +2,7 @@ import os
 
 import h5py
 import pandas as pd
+import numpy as np
 import torch
 from torch.utils.data import Dataset
 from sklearn.model_selection import KFold
@@ -27,7 +28,7 @@ TYPE_CLASS = {
 class BLOND(Dataset):
 
     def __init__(self, fold, path_to_data, transform=None, medal_id=None, class_dict=TYPE_CLASS, use_synthetic=False,
-                 k_fold=None):
+                 k_fold=None, r_split=None):
         """
 
         Args:
@@ -38,6 +39,7 @@ class BLOND(Dataset):
             class_dict (dict): Dict with the desired classes to use for training
             use_synthetic (bool): Use synthetic data for training
             k_fold (tuple): (fold_i (int), num_folds (int))
+            r_split (tuple): (split_i (int), num_splits (int))
         """
         self.transform = transform
         self.path_to_data = path_to_data
@@ -45,6 +47,7 @@ class BLOND(Dataset):
         self.class_dict = class_dict
         self.use_synthetic = use_synthetic
         self.k_fold = k_fold
+        self.r_split = r_split
 
         # Choose labels with or without synthetic data
         if self.use_synthetic:
@@ -58,10 +61,6 @@ class BLOND(Dataset):
 
         # Create k-fold set up
         if self.k_fold is not None:
-            # -------------------------------------------------------
-            self.labels = self.labels[self.labels['fold'] == 'train']
-            self.labels.index = range(len(self.labels))
-            # -------------------------------------------------------
             fold_i, num_folds = self.k_fold
             kf = KFold(n_splits=num_folds, random_state=1000, shuffle=True)
             train_split, test_split = list(kf.split(self.labels))[fold_i]
@@ -73,7 +72,14 @@ class BLOND(Dataset):
             df_val.loc[test_split, 'fold'] = 'val'
             self.labels = df_train.append((df_val, df_test), ignore_index=True)
 
-        # Calculate class weights
+        # Random split (train) dataset in num_split parts
+        if self.r_split is not None:
+            split_i, num_splits = self.r_split
+            self.labels = self.labels[self.labels['fold'] == 'train']
+            self.labels = self.labels.sample(frac=1, random_state=1000)
+            self.labels = np.array_split(self.labels, num_splits)[split_i]
+
+            # Calculate class weights
         self.class_weights = len(self.labels) / self.labels['Type'].value_counts()
 
         classes = torch.zeros(len(self.labels))
@@ -109,6 +115,11 @@ class BLOND(Dataset):
         current = torch.as_tensor(f['data']['block0_values'][:, 1])
         voltage = torch.as_tensor(f['data']['block0_values'][:, 0])
 
+        #import matplotlib.pyplot as plt
+        #plt.plot(current)
+        #plt.title(row["Timestamp"])
+        #plt.show()
+
         # Shifts event window to start with a new cycle
         idx = torch.where(torch.diff(torch.signbit(current[:1000])))[0][0]
 
@@ -129,10 +140,14 @@ class BLOND(Dataset):
 
 if __name__ == '__main__':
     class_dict = {
-        'Laptop': 0,
-        'Monitor': 1,
-        'USB Charger': 2
+        'Daylight': 0
     }
 
     path = os.path.join(ROOT_DIR, 'data')
-    BLOND('train', path, k_fold=(1, 10))
+
+    print(len(BLOND('train', path, r_split=(4, 5))))
+
+
+    #dataset = BLOND('all', path, class_dict=class_dict)
+    #for i in dataset:
+    #    _, _, _ = i
