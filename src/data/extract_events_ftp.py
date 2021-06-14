@@ -24,9 +24,11 @@ def calibrate_offset(f, average_frequency):
     remainder = divmod(length, period_length)[1]
     if remainder == 0:
         remainder = period_length
-    offset = np.pad(f['voltage'][:], (0, period_length - remainder), 'constant', constant_values=0).reshape(-1,
-                                                                                                            period_length).mean(
-        axis=1)
+
+    offset = np.pad(f['voltage'][:],
+                    (0, period_length - remainder),
+                    'constant',
+                    constant_values=0).reshape(-1, period_length).mean(axis=1)
 
     x = np.linspace(1, length, length // period_length, dtype=int)
     new_x = np.linspace(1, length, length - period_length, dtype=int)

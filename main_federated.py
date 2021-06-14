@@ -15,7 +15,7 @@ def run(rank, world_size, master_addr):
     if rank == 0:
         config = {
             'batch_size': 128,
-            'total_epochs': 30,
+            'total_epochs': 60,
             'local_epochs': 5,
             'seq_len': 190,
             'criterion': torch.nn.CrossEntropyLoss(),
@@ -23,7 +23,7 @@ def run(rank, world_size, master_addr):
             'optim_kwargs': {'lr': 0.059, 'weight_decay': 0.0},
             'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau,
             'scheduler_kwargs': {'factor': 0.1, 'patience': 3, 'mode': 'max'},
-            'model_kwargs': {'name': 'DENSE', 'num_layers': 4, 'start_size': 28},
+            'model_kwargs': {'name': 'CNN1D', 'num_layers': 4, 'start_size': 28},
             'class_dict': TYPE_CLASS,
             'features': None,
             'experiment_name': None,
