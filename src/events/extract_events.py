@@ -3,29 +3,37 @@ import pandas as pd
 import datetime
 import h5py
 import numpy as np
-from ftplib import FTP
 import scipy
 import scipy.signal
-from tqdm import tqdm
+import matplotlib.pyplot as plt
 from multiprocessing import Pool, Lock
 from functools import partial
-from pathlib import Path
-
-ROOT_DIR = Path(__file__).parent.parent.parent
+from src.utils import ROOT_DIR
 
 
-def calibrate_offset(f, average_frequency):
-    if 'voltage' not in list(f):
-        return np.zeros(f['voltage1'].shape), np.zeros(f['voltage1'].shape)
+def calibrate_offset(data, average_frequency):
+    """ Calibrates the offset to subtract of each measurement.
+        Taken: https://zenodo.org/record/838974#.YMsl-mgzYuU
 
-    length = len(f['voltage'])
+    Args:
+        data (h5py.File): Dataset of the measurements
+        average_frequency (int): Measurement frequency
+
+    Returns:
+        (np.array): Offset to apply on voltage
+        (np.array): Offset to apply on current
+    """
+    if 'voltage' not in list(data):
+        return np.zeros(data['voltage1'].shape), np.zeros(data['voltage1'].shape)
+
+    length = len(data['voltage'])
     period_length = round(average_frequency / 50)
 
     remainder = divmod(length, period_length)[1]
     if remainder == 0:
         remainder = period_length
 
-    offset = np.pad(f['voltage'][:],
+    offset = np.pad(data['voltage'][:],
                     (0, period_length - remainder),
                     'constant',
                     constant_values=0).reshape(-1, period_length).mean(axis=1)
@@ -39,6 +47,18 @@ def calibrate_offset(f, average_frequency):
 
 
 def process_signal(data, socket_id):
+    """ Applies the offset correction and mean subtraction.
+        Also applies a median filter and the calibration.
+        As suggested in the BLOND paper.
+
+    Args:
+        data (h5py.File): Dataset of the measurements
+        socket_id (int): The socket to pe processed
+
+    Returns:
+        (np.array): The processed current
+        (np.array): The processed voltage
+    """
     current = data[f"current{socket_id}"]
     voltage = data['voltage']
     offset_voltage, offset_current = calibrate_offset(data, data.attrs['frequency'])
@@ -55,35 +75,32 @@ def process_signal(data, socket_id):
     return current, voltage
 
 
-def process_event(label):
-    measurement_frequency = 6400
-    snippet_length = 25600
+def process_event(path_to_data, label, measurement_frequency=6400, snippet_length=25600, verbose=False):
+    """ Cuts the event snippets out of the data.
+        Applies preprocessing.
 
+    Args:
+        path_to_data (string): Path to BLOND dataset
+        label (int, pd.Series): Row of the events dataframe
+        measurement_frequency (int): Frequency of the measurements
+        snippet_length (int): Length in measurements of the extracted snippets
+        verbose (bool): Stores a plot of each event
+    """
     _, label = label
-    ip = '138.246.224.34'
-    user = 'm1375836'
-    passwd = 'm1375836'
 
-    socket_base = 'BLOND/BLOND-50/'
     medal_id = label['Medal_Nr']
     date = str(label['Date'])
-    event_timestamp = datetime.datetime.strptime(label['Timestamp'][:-6], '%Y-%m-%d %H:%M:%S.%f')
+    event_timestamp = datetime.datetime.strptime(label['Timestamp'], '%Y-%m-%d %H:%M:%S.%f%z')
+    medal_path = os.path.join(path_to_data, date, f'medal-{medal_id}')
 
-    ftp_socket = FTP(ip)
-    ftp_socket.login(user, passwd)
-
-    medal_path = os.path.join(socket_base, date + f'/medal-{medal_id}')
-    ftp_socket.cwd(medal_path)
-
-    files = sorted(ftp_socket.nlst())
-    # Iterate over all files on FTP to find file with timestamp of event
+    files = sorted(os.listdir(medal_path))
     for i, file in enumerate(files):
-        file_timestamp = '_'.join(file.split('-')[2:-1])
-        file_timestamp = datetime.datetime.strptime(file_timestamp[:-6], '%Y_%m_%dT%H_%M_%S.%f')
+        file_timestamp = file.split(f'medal-{medal_id}-')[1][:-13]
+        file_timestamp = datetime.datetime.strptime(file_timestamp, '%Y-%m-%dT%H-%M-%S.%fT%z')
 
         if file_timestamp > event_timestamp:
-            file_timestamp = '_'.join(files[i - 1].split('-')[2:-1])
-            file_timestamp = datetime.datetime.strptime(file_timestamp[:-6], '%Y_%m_%dT%H_%M_%S.%f')
+            file_timestamp = files[i - 1].split(f'medal-{medal_id}-')[1][:-13]
+            file_timestamp = datetime.datetime.strptime(file_timestamp, '%Y-%m-%dT%H-%M-%S.%fT%z')
 
             appliance = label['Appliance_Name']
             medal_id = label['Medal_Nr']
@@ -99,14 +116,8 @@ def process_event(label):
             if not os.path.isfile(event_file_path):
 
                 # Load file from FTP
-                tmp_path = os.path.join(ROOT_DIR, 'data/tmp', medal_path)
-                os.makedirs(tmp_path, exist_ok=True)
-                file_path = os.path.join(tmp_path, files[i - 1])
-                data = open(file_path, 'wb')
-                ftp_socket.retrbinary('RETR %s' % files[i - 1], data.write)
-                data.close()
-
-                data = h5py.File(os.path.join(file_path), 'r')
+                file_path = os.path.join(medal_path, files[i - 1])
+                data = h5py.File(file_path, 'r')
                 current, voltage = process_signal(data, socket_id)
                 data.close()
 
@@ -122,12 +133,8 @@ def process_event(label):
                     voltage = voltage[0:window_end_index]
 
                     # Load file from FTP
-                    file_path = os.path.join(tmp_path, files[i - 2])
-                    data = open(file_path, 'wb')
-                    ftp_socket.retrbinary('RETR %s' % files[i - 2], data.write)
-                    data.close()
-
-                    data = h5py.File(os.path.join(file_path), 'r')
+                    file_path = os.path.join(medal_path, files[i - 2])
+                    data = h5py.File(file_path, 'r')
                     current_2, voltage_2 = process_signal(data, socket_id)
                     data.close()
                     current = np.append(current_2[window_start_index:], current)
@@ -139,12 +146,8 @@ def process_event(label):
                     voltage = voltage[window_start_index:]
 
                     # Load file from FTP
-                    file_path = os.path.join(tmp_path, files[i])
-                    data = open(file_path, 'wb')
-                    ftp_socket.retrbinary('RETR %s' % files[i], data.write)
-                    data.close()
-
-                    data = h5py.File(os.path.join(file_path), 'r')
+                    file_path = os.path.join(medal_path, files[i])
+                    data = h5py.File(file_path, 'r')
                     current_2, voltage_2 = process_signal(data, socket_id)
                     data.close()
                     current = np.append(current, current_2[:snippet_length - len(current)])
@@ -154,13 +157,18 @@ def process_event(label):
                     current = current[window_start_index:window_end_index]
                     voltage = voltage[window_start_index:window_end_index]
 
-                assert (len(current) == snippet_length)
+                assert len(current) == snippet_length
+
+                if verbose:
+                    fig_path = os.path.join(ROOT_DIR, 'data', 'figs')
+                    os.makedirs(fig_path, exist_ok=True)
+                    plt.plot(current)
+                    plt.savefig(os.path.join(fig_path, event_file.split('.')[0]))
 
                 # Append new row to dataframe
                 f = h5py.File(event_file_path, "w")
                 f.create_dataset('data/block0_values', data=(np.stack((voltage, current), axis=1)))
                 f.close()
-                os.remove(os.path.join(tmp_path, files[i - 1]))
 
                 # Extend existing csv or create new one
                 new_row = {'Medal': medal_id, 'Socket': socket_id, 'Appliance': appliance,
@@ -186,10 +194,13 @@ def init(l):
 
 
 if __name__ == '__main__':
-    labels = pd.read_csv(os.path.join(ROOT_DIR, 'data/events.csv'))
+    path_to_data = "C:/Users/jonas/Documents/MATLAB/BLOND"
+    #path_to_data = "/mnt/nilm/nilm/i13-dataset/BLOND/BLOND-50"
+
+    labels = pd.read_csv(os.path.join(ROOT_DIR, 'data/test.csv'))
 
     l = Lock()
-    pool = Pool(processes=20, initializer=init, initargs=(l,))
-
-    result = pool.map_async(process_event, labels.iterrows())
+    pool = Pool(processes=5, initializer=init, initargs=(l,))
+    wrapper = partial(process_event, path_to_data, verbose=True)
+    result = pool.map_async(wrapper, labels.iterrows())
     result.get()
