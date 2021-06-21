@@ -21,6 +21,7 @@ APPLIANCE_TYPE = {
     'Akura': 'USB Charger',
     'Apple MD836ZM': 'USB Charger',
     'Eurom VS 16': 'Fan',
+    'Clatronic WK 3445': 'Kettle',
     'Dell E6540': 'Laptop',
     'Dell Optiplex 7040': 'PC',
     'Dell P2210': 'Monitor',
@@ -298,7 +299,7 @@ class Annotator:
             timestamps = np.load(preprocessed_path)['timestamps']
 
             # Convert string timestamps to datetimes
-            timestamps = [datetime.fromisoformat(date) for date in timestamps]
+            timestamps = [datetime.strptime(date[:-3]+'00', '%Y-%m-%d %H:%M:%S.%f%z') for date in timestamps]
             results = []
             for i in range(0, 6):
                 results.append((processed_data[i], timestamps))

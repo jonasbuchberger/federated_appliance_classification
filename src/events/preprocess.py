@@ -1,8 +1,7 @@
 import os
 import numpy as np
 import h5py
-import pandas as pd
-from datetime import timedelta, timezone
+from datetime import timezone
 from multiprocessing import Pool
 from functools import partial
 from datetime import datetime, timedelta
@@ -19,10 +18,10 @@ def preprocess_medal(storage_path, path_to_data, date, medal_id):
         medal_id (int): Medal identifier
     """
     medal_path = os.path.join(path_to_data, date, f'medal-{medal_id}')
-    file_list = os.listdir(medal_path)
+    file_list = sorted(os.listdir(medal_path))
 
-    for f in file_list:
-        if 'summary' in str(f):
+    for f in file_list[:]:
+        if 'summary' in f:
             file_list.remove(f)
 
     os.makedirs(os.path.join(storage_path, 'tmp'), exist_ok=True)
@@ -62,6 +61,7 @@ def preprocess_file(storage_path, path_to_data, file, measurement_frequency=6400
 
     """
     file_path = os.path.join(path_to_data, file)
+
     data = h5py.File(file_path, 'r')
 
     start_time = datetime(
@@ -100,11 +100,12 @@ if __name__ == '__main__':
     path_to_data = "/mnt/nilm/nilm/i13-dataset/BLOND/BLOND-50"
     storage_path = "/mnt/nilm/temp/buchberger/BLOND-Preprocessed"
 
-    start_date = datetime.fromisoformat('2017-03-01').date()
-    end_date = datetime.fromisoformat('2017-04-30').date()
+    start_date = datetime.strptime('2017-01-09', "%Y-%m-%d").date()
+    end_date = datetime.strptime('2017-04-30', "%Y-%m-%d").date()
     num_days = (end_date - start_date).days
     dates = [str(start_date + timedelta(days=x)) for x in range(num_days)]
-    medal_ids = [1]
+    dates.remove('2017-03-26')
+    medal_ids = [7, 10, 11, 12, 13]
 
     for date in dates:
         for medal_id in medal_ids:

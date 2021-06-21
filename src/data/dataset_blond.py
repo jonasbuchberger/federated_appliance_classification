@@ -11,9 +11,10 @@ from src.utils import ROOT_DIR
 
 
 TYPE_CLASS = {
-    'Battery Charger': 0,
-    'Daylight': 1,
-    'Dev Board': 2,
+    #'Battery Charger': 0,
+    'Daylight': 0,
+    'Dev Board': 1,
+    'Fan': 2,
     'Laptop': 3,
     'Monitor': 4,
     'PC': 5,
@@ -21,7 +22,8 @@ TYPE_CLASS = {
     'Projector': 7,
     'Screen Motor': 8,
     'USB Charger': 9,
-    #'Multi-Toll': 10
+    #'Multi-Tool': 10,
+    #'Kettle: 11
 }
 
 
@@ -115,11 +117,6 @@ class BLOND(Dataset):
         current = torch.as_tensor(f['data']['block0_values'][:, 1])
         voltage = torch.as_tensor(f['data']['block0_values'][:, 0])
 
-        #import matplotlib.pyplot as plt
-        #plt.plot(current)
-        #plt.title(row["Timestamp"])
-        #plt.show()
-
         # Shifts event window to start with a new cycle
         idx = torch.where(torch.diff(torch.signbit(current[:1000])))[0][0]
 
@@ -140,14 +137,15 @@ class BLOND(Dataset):
 
 if __name__ == '__main__':
     class_dict = {
-        'Daylight': 0
+        'PC': 0
     }
 
     path = os.path.join(ROOT_DIR, 'data')
+    import matplotlib.pyplot as plt
+    from src.features.features import COT
+    dataset = BLOND('all', path, class_dict=class_dict)
+    for i in dataset:
+        c, _, _ = i
+        plt.plot(c)
+        plt.show()
 
-    print(len(BLOND('train', path, r_split=(4, 5))))
-
-
-    #dataset = BLOND('all', path, class_dict=class_dict)
-    #for i in dataset:
-    #    _, _, _ = i

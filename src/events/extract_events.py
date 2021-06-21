@@ -8,7 +8,6 @@ import scipy.signal
 import matplotlib.pyplot as plt
 from multiprocessing import Pool, Lock
 from functools import partial
-from src.utils import ROOT_DIR
 
 
 def calibrate_offset(data, average_frequency):
@@ -75,12 +74,13 @@ def process_signal(data, socket_id):
     return current, voltage
 
 
-def process_event(path_to_data, label, measurement_frequency=6400, snippet_length=25600, verbose=False):
+def process_event(path_to_data, dest_path, label, measurement_frequency=6400, snippet_length=25600, verbose=False):
     """ Cuts the event snippets out of the data.
         Applies preprocessing.
 
     Args:
         path_to_data (string): Path to BLOND dataset
+        dest_path (string): Destination of the snippets
         label (int, pd.Series): Row of the events dataframe
         measurement_frequency (int): Frequency of the measurements
         snippet_length (int): Length in measurements of the extracted snippets
@@ -90,7 +90,7 @@ def process_event(path_to_data, label, measurement_frequency=6400, snippet_lengt
 
     medal_id = label['Medal_Nr']
     date = str(label['Date'])
-    event_timestamp = datetime.datetime.strptime(label['Timestamp'], '%Y-%m-%d %H:%M:%S.%f%z')
+    event_timestamp = datetime.datetime.strptime(label['Timestamp'][:-3] + '00', '%Y-%m-%d %H:%M:%S.%f%z')
     medal_path = os.path.join(path_to_data, date, f'medal-{medal_id}')
 
     files = sorted(os.listdir(medal_path))
@@ -109,8 +109,8 @@ def process_event(path_to_data, label, measurement_frequency=6400, snippet_lengt
             timestamp = label['Timestamp'].replace(':', '_')
 
             event_file = f'{medal_id}_{socket_id}_{appliance}_{timestamp}.h5'
-            event_file_path = os.path.join(ROOT_DIR, f'data/event_snippets_new/medal-{medal_id}', event_file)
-            os.makedirs(os.path.join(ROOT_DIR, f'data/event_snippets_new/medal-{medal_id}'), exist_ok=True)
+            event_file_path = os.path.join(dest_path, f'event_snippets/medal-{medal_id}', event_file)
+            os.makedirs(os.path.join(dest_path, f'event_snippets/medal-{medal_id}'), exist_ok=True)
 
             # Check if file is already existing
             if not os.path.isfile(event_file_path):
@@ -128,7 +128,7 @@ def process_event(path_to_data, label, measurement_frequency=6400, snippet_lengt
 
                 # Add file before or after event to extend to valid window size
                 if window_start_index < 0:
-                    print(f'Added before: {event_file_path}')
+                    print(f'Added before: {event_file}')
                     current = current[0:window_end_index]
                     voltage = voltage[0:window_end_index]
 
@@ -141,7 +141,7 @@ def process_event(path_to_data, label, measurement_frequency=6400, snippet_lengt
                     voltage = np.append(voltage_2[window_start_index:], voltage)
 
                 elif window_end_index > len(current):
-                    print(f'Added behind: {event_file_path}')
+                    print(f'Added behind: {event_file}')
                     current = current[window_start_index:]
                     voltage = voltage[window_start_index:]
 
@@ -160,10 +160,13 @@ def process_event(path_to_data, label, measurement_frequency=6400, snippet_lengt
                 assert len(current) == snippet_length
 
                 if verbose:
-                    fig_path = os.path.join(ROOT_DIR, 'data', 'figs')
+                    fig_path = os.path.join(dest_path, 'event_snippets', 'figs')
                     os.makedirs(fig_path, exist_ok=True)
+                    lock.acquire()
                     plt.plot(current)
                     plt.savefig(os.path.join(fig_path, event_file.split('.')[0]))
+                    plt.close()
+                    lock.release()
 
                 # Append new row to dataframe
                 f = h5py.File(event_file_path, "w")
@@ -173,7 +176,7 @@ def process_event(path_to_data, label, measurement_frequency=6400, snippet_lengt
                 # Extend existing csv or create new one
                 new_row = {'Medal': medal_id, 'Socket': socket_id, 'Appliance': appliance,
                            'Type': class_name, 'Timestamp': timestamp}
-                csv_path = os.path.join(ROOT_DIR, f'data/event_snippets_new/events_new.csv')
+                csv_path = os.path.join(dest_path, 'event_snippets/events_new.csv')
 
                 lock.acquire()
                 if os.path.isfile(csv_path):
@@ -194,13 +197,14 @@ def init(l):
 
 
 if __name__ == '__main__':
-    path_to_data = "C:/Users/jonas/Documents/MATLAB/BLOND"
-    #path_to_data = "/mnt/nilm/nilm/i13-dataset/BLOND/BLOND-50"
+    # path_to_data = "C:/Users/jonas/Documents/MATLAB/BLOND"
+    path_to_data = "/mnt/nilm/nilm/i13-dataset/BLOND/BLOND-50"
+    dest_path = "/mnt/nilm/temp/buchberger/"
 
-    labels = pd.read_csv(os.path.join(ROOT_DIR, 'data/test.csv'))
+    labels = pd.read_csv('/home/ubuntu/federated_blond/data/csv/medal-13.csv')
 
     l = Lock()
-    pool = Pool(processes=5, initializer=init, initargs=(l,))
-    wrapper = partial(process_event, path_to_data, verbose=True)
+    pool = Pool(processes=16, initializer=init, initargs=(l,))
+    wrapper = partial(process_event, path_to_data, dest_path, verbose=True)
     result = pool.map_async(wrapper, labels.iterrows())
     result.get()
