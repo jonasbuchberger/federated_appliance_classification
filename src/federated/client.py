@@ -62,8 +62,8 @@ class Client:
                                              config['batch_size'],
                                              use_synthetic=config['use_synthetic'],
                                              features=config['features'],
-                                             medal_id=self.rank,
-                                             #r_split=(self.rank-1, self.world_size-1),
+                                             #medal_id=self.rank,
+                                             r_split=(self.rank-1, self.world_size-1),
                                              class_dict=config['class_dict'])
 
         aggregation_rounds = int(total_epochs / local_epochs)

@@ -1,15 +1,14 @@
 import os
 import json
-import time
 import torch
-import datetime
+from datetime import datetime, timedelta
 from tqdm import tqdm
 import torch.distributed as dist
 from sklearn.metrics import precision_recall_fscore_support
 from src.utils import ROOT_DIR, SummaryWriter
 from src.models.test import test
 from src.models.experiment_utils import init_model, get_datalaoders
-from src.federated.federated_utils import receive_gather, send_broadcast, weighted_model_average
+from src.federated.federated_utils import receive_gather, send_broadcast, weighted_model_average, get_pi_usage
 
 
 class Server:
@@ -47,7 +46,7 @@ class Server:
                                 rank=0,
                                 world_size=self.world_size,
                                 init_method=init_method,
-                                timeout=datetime.timedelta(0, self.config['local_epochs'] * 1800),
+                                timeout=timedelta(0, self.config['local_epochs'] * 1800),
                                 )
 
     def _setup_experiment(self, config):
@@ -78,6 +77,7 @@ class Server:
         return config
 
     def run(self):
+        start_time = datetime.now()
 
         total_epochs = self.config['total_epochs']
         local_epochs = self.config['local_epochs']
@@ -104,7 +104,6 @@ class Server:
         print('Send model to clients.')
         send_broadcast(model)
 
-        start = time.time()
         aggregation_rounds = int(total_epochs / local_epochs)
         for i_agg in tqdm(range(0, aggregation_rounds)):
             # Gather trained models
@@ -119,7 +118,8 @@ class Server:
             # Broadcast new model
             send_broadcast(model)
 
-        print(f'Finished Training: {(time.time() - start) / 60}min')
+        end_time = datetime.now()
+        print(f'Finished Training: {start_time - end_time}')
 
         test(model, test_loader, **self.config)
 
@@ -131,6 +131,7 @@ class Server:
             text_file.write(str(model))
         text_file.close()
 
+        get_pi_usage(start_time, end_time, os.path.join(log_path, 'pi_logs'))
         print('Finished Testing')
 
     def _val(self, val_loader, model, criterion, i_agg, logger):

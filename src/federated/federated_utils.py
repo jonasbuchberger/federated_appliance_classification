@@ -1,5 +1,9 @@
+import os
+import psycopg2
 from torch import nn
 import torch.distributed as dist
+import pandas as pd
+from datetime import datetime, timedelta
 
 
 def send_broadcast(obj):
@@ -70,3 +74,32 @@ def weighted_model_average(model_list, weight_list=None):
 
     model_list[0].load_state_dict(model_dict)
     return model_list[0]
+
+
+def get_pi_usage(start_time, end_time, dest_path):
+    """ Gets pi usage information from postgressSQL database.
+
+    Args:
+        start_time (datetime): Start of training
+        end_time (datetime): End of testing
+        dest_path (string): Path to destination of logs
+    """
+    connection = psycopg2.connect(host="131.159.52.93",
+                                  port=5432,
+                                  user="jonas",
+                                  password="jonas04",
+                                  database="rpc")
+
+    os.makedirs(dest_path, exist_ok=True)
+
+    start_time = start_time - timedelta(seconds=10)
+    for pi in [17, 18, 19, 20, 21, 22, 23, 24, 41, 42, 43, 45, 46, 47, 48]:
+
+        sql = f"SELECT time, memory_used, bytes_sent, bytes_recv, cpu0_nice, cpu1_nice, cpu2_nice, cpu3_nice " \
+              f"FROM raspi{pi};"
+
+        data = pd.read_sql_query(sql, connection).set_index('time')
+        data = data[start_time: end_time]
+        data.to_csv(f'dest_path/raspi{pi}.csv')
+
+    connection.close()
