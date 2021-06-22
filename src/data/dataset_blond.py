@@ -100,7 +100,7 @@ class BLOND(Dataset):
 
         # Filter for medal unit
         if medal_id is not None:
-            self.labels = self.labels[self.labels['Medal'] == medal_id]
+            self.labels = self.labels[self.labels['Medal'] == str(medal_id)]
 
     def __len__(self):
         return len(self.labels)
