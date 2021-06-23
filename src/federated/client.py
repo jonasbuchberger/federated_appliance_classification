@@ -68,7 +68,6 @@ class Client:
 
         aggregation_rounds = int(total_epochs / local_epochs)
         for agg_i in range(0, aggregation_rounds):
-            # print(f'Aggregation {agg_i}')
 
             for epoch_l in range(0, local_epochs):
 

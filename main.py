@@ -14,16 +14,18 @@ if __name__ == '__main__':
     path_to_data = os.path.join(ROOT_DIR, 'data')
 
     class_dict = {
-        'Battery Charger': 0,
-        'Daylight': 1,
-        'Dev Board': 2,
+        # 'Battery Charger': 0,
+        'Daylight': 0,
+        'Dev Board': 1,
+        'Fan': 2,
         'Laptop': 3,
         'Monitor': 4,
         'PC': 5,
         'Printer': 6,
         'Projector': 7,
         'Screen Motor': 8,
-        'USB Charger': 9
+        'USB Charger': 9,
+        # 'Multi-Tool': 10
     }
     """
     class_dict = {
@@ -43,11 +45,11 @@ if __name__ == '__main__':
         'seq_len': 190,
         'criterion': torch.nn.CrossEntropyLoss(),
         'optim': torch.optim.SGD,
-        'optim_kwargs': {'lr': 0.042, 'weight_decay': 0.001},
+        'optim_kwargs': {'lr': 0.059, 'weight_decay': 0.001},
         'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau,
         'scheduler_kwargs': {'factor': 0.1, 'patience': 3, 'mode': 'max'},
         'early_stopping': 5,
-        'model_kwargs': {'name': 'DENSE', 'num_layers': 4, 'start_size': 28},
+        'model_kwargs': {'name': 'CNN1D', 'num_layers': 4, 'start_size': 28},
         'class_dict': class_dict,
         'features': None,
         'experiment_name': None,
@@ -60,12 +62,12 @@ if __name__ == '__main__':
 
     feature_dict = {
         'train': [RandomAugment(),
-                  Spectrogram()],
+                  MFCC()],
         'val': [RandomAugment(p=0),
-                Spectrogram()]
+                MFCC()]
     }
     config['features'] = feature_dict
-    run_config(path_to_data, **config)
+    #run_config(path_to_data, **config)
     #run_k_fold(path_to_data, 10, **config)
 
 

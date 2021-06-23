@@ -1,8 +1,9 @@
 import os
-import psycopg2
+import torch
 from torch import nn
 import torch.distributed as dist
 import pandas as pd
+from torch.nn.functional import softmax
 from datetime import datetime, timedelta
 
 
@@ -55,22 +56,27 @@ def weighted_model_average(model_list, weight_list=None):
 
     Args:
         model_list (list): List of models
-        weight_list (list): List of weights for each model. Weights should sum up to 1.0
+        weight_list (list): List of weights for each model.
 
     Returns:
         (nn.Module): The new aggregated model
     """
-    if weight_list is not None:
-        assert (weight_list.sum() == 1.0)
-
     model_dict = model_list[0].state_dict()
-    """
-    TODO: Weighted averaging
-    """
-    for layer in model_dict.keys():
-        for model in model_list[1:]:
-            model_dict[layer] += model.state_dict()[layer]
-        model_dict[layer] = model_dict[layer] / float(len(model_list))
+    if weight_list is not None:
+        weight_list = softmax(torch.as_tensor(weight_list, dtype=torch.float), dim=0)
+
+        for layer in model_dict.keys():
+            model_dict[layer] = model_dict[layer] * weight_list[0]
+
+        for layer in model_dict.keys():
+            for i, model in enumerate(model_list[1:]):
+                model_dict[layer] += model.state_dict()[layer] * weight_list[i+1]
+
+    else:
+        for layer in model_dict.keys():
+            for model in model_list[1:]:
+                model_dict[layer] += model.state_dict()[layer]
+            model_dict[layer] = model_dict[layer] / float(len(model_list))
 
     model_list[0].load_state_dict(model_dict)
     return model_list[0]
@@ -84,6 +90,8 @@ def get_pi_usage(start_time, end_time, dest_path):
         end_time (datetime): End of testing
         dest_path (string): Path to destination of logs
     """
+    import psycopg2
+
     connection = psycopg2.connect(host="131.159.52.93",
                                   port=5432,
                                   user="jonas",
@@ -92,14 +100,22 @@ def get_pi_usage(start_time, end_time, dest_path):
 
     os.makedirs(dest_path, exist_ok=True)
 
-    start_time = start_time - timedelta(seconds=10)
+    start_time = start_time - timedelta(seconds=5)
     for pi in [17, 18, 19, 20, 21, 22, 23, 24, 41, 42, 43, 45, 46, 47, 48]:
-
-        sql = f"SELECT time, memory_used, bytes_sent, bytes_recv, cpu0_nice, cpu1_nice, cpu2_nice, cpu3_nice " \
+        sql = f"SELECT time, memory_used, bytes_sent, bytes_recv, packets_recv, packets_sent, " \
+              f"cpu0_user, cpu1_user, cpu2_user, cpu3_user, " \
+              f"cpu0_freq , cpu1_freq, cpu2_freq, cpu3_freq " \
               f"FROM raspi{pi};"
 
         data = pd.read_sql_query(sql, connection).set_index('time')
-        data = data[start_time: end_time]
-        data.to_csv(f'dest_path/raspi{pi}.csv')
+        data = data[str(start_time): str(end_time)]
+        data.to_csv(f'{dest_path}/raspi{pi}.csv')
 
     connection.close()
+
+
+if __name__ == '__main__':
+    model = nn.Linear(300, 300)
+    model_list = [model, model, model, model]
+    weight_list = [1, 2, 3, 4]
+    model = weighted_model_average(model_list, weight_list)

@@ -12,7 +12,7 @@ RUN apt-get install --yes software-properties-common python3 python3-pip && \
 # Install torch
 RUN pip3 install torch==1.8.1
 RUN pip3 install torchvision==0.9.1
-RUN pip3 install torchaudio -f https://torch.kmtea.eu/whl/stable.html
+RUN pip3 install torchaudio==0.8.1 -f https://torch.kmtea.eu/whl/stable.html
 
 RUN apt-get install llvm --yes
 RUN pip3 install librosa
@@ -25,3 +25,5 @@ RUN pip3 install smt
 RUN pip3 install tqdm
 RUN pip3 install scikit-learn
 RUN pip3 install pandas
+RUN apt-get install --yes libpq-dev python3-dev
+RUN pip3 install psycopg2

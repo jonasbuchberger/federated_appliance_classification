@@ -20,7 +20,7 @@ def run(rank, world_size, master_addr):
             'seq_len': 190,
             'criterion': torch.nn.CrossEntropyLoss(),
             'optim': torch.optim.SGD,
-            'optim_kwargs': {'lr': 0.059, 'weight_decay': 0.0},
+            'optim_kwargs': {'lr': 0.001, 'weight_decay': 0.0},
             'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau,
             'scheduler_kwargs': {'factor': 0.1, 'patience': 3, 'mode': 'max'},
             'model_kwargs': {'name': 'CNN1D', 'num_layers': 4, 'start_size': 28},
@@ -33,7 +33,7 @@ def run(rank, world_size, master_addr):
         feature_dict = {
             'train': [RandomAugment(),
                       MFCC()],
-            'val': [RandomAugment(measurement_frequency=6400, p=0),
+            'val': [RandomAugment(p=0),
                     MFCC()],
         }
         config['features'] = feature_dict

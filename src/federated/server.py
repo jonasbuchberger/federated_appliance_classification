@@ -83,7 +83,7 @@ class Server:
         local_epochs = self.config['local_epochs']
         criterion = self.config['criterion']
         experiment_name = self.config['experiment_name']
-        run_name = self.config['run_name']
+        run_name = self.config.get('run_name', '')
 
         _, val_loader, test_loader = get_datalaoders(self.path_to_data,
                                                      self.config['batch_size'],
@@ -119,7 +119,7 @@ class Server:
             send_broadcast(model)
 
         end_time = datetime.now()
-        print(f'Finished Training: {start_time - end_time}')
+        print(f'Finished Training: {(end_time - start_time).total_seconds() / 60} mins')
 
         test(model, test_loader, **self.config)
 
