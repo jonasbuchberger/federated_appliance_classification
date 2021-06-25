@@ -100,7 +100,7 @@ def get_pi_usage(start_time, end_time, dest_path):
 
     os.makedirs(dest_path, exist_ok=True)
 
-    start_time = start_time - timedelta(seconds=5)
+    start_time = start_time - timedelta(seconds=10)
     for pi in [17, 18, 19, 20, 21, 22, 23, 24, 41, 42, 43, 45, 46, 47, 48]:
         sql = f"SELECT time, memory_used, bytes_sent, bytes_recv, packets_recv, packets_sent, " \
               f"cpu0_user, cpu1_user, cpu2_user, cpu3_user, " \

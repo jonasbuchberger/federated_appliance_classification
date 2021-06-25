@@ -276,26 +276,27 @@ class MFCC(object):
 
 class RandomAugment(object):
 
-    def __init__(self, net_frequency=50, measurement_frequency=6400, p=0.8):
+    def __init__(self, net_frequency=50, measurement_frequency=6400, p=0.8, augment_i=-1):
         """ Randomly applies an augmentation on the window. PhaseShift (Left, Right) or HalfPhaseFlip (Left, Right).
 
         Args:
             net_frequency (int): Frequency of the net 50Hz or 60Hz
             measurement_frequency (int): Frequency of the measurements
             p (float): Probability of an augmentation being applied on the window
+            augment_i (int): Used for manual augmentation selection
         """
         self.cycle_length = int(measurement_frequency / net_frequency)
         self.p = p
         self.feature_dim = 0
+        self.augment_i = augment_i
 
     def __call__(self, sample):
 
         current, voltage, features, target = sample
 
-        augment_i = -1
-        if self.p > 0:
+        if self.p > 0 and self.augment_i == -1:
             i = int(4 / self.p)
-            augment_i = (torch.randint(i, (1,))).item()
+            self.augment_i = (torch.randint(i, (1,))).item()
 
         idx_0 = self.cycle_length
         idx_1 = self.cycle_length * 2
@@ -303,22 +304,22 @@ class RandomAugment(object):
         idx_3 = int(self.cycle_length / 2)
 
         # Phase Shift Left
-        if augment_i == 0:
+        if self.augment_i == 0:
             current = current[idx_1:]
             voltage = voltage[idx_1:]
 
         # Phase Shift Right
-        elif augment_i == 1:
+        elif self.augment_i == 1:
             current = current[:current.size(0) - idx_1]
             voltage = voltage[:voltage.size(0) - idx_1]
 
         # Half Phase Flip Left
-        elif augment_i == 2:
+        elif self.augment_i == 2:
             current = current[idx_2:current.size(0) - idx_3] * -1
             voltage = voltage[idx_2:voltage.size(0) - idx_3] * -1
 
         # Half Phase Flip Right
-        elif augment_i == 3:
+        elif self.augment_i == 3:
             current = current[idx_3:current.size(0) - idx_2] * -1
             voltage = voltage[idx_3:voltage.size(0) - idx_2] * -1
 
