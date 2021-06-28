@@ -34,6 +34,7 @@ def run_config(path_to_data, **config):
                   features (dict): Dictionary of val and train features as list
                   experiment_name (string): Name to store the experiment results or None
                   use_synthetic (bool): Use synthetic data for training
+                  medal_id (int): Used to train a model for a single medal
 
     Returns:
         (float): Best F1 score on validation set
@@ -69,7 +70,8 @@ def run_config(path_to_data, **config):
                                                             use_synthetic=config['use_synthetic'],
                                                             features=config['features'],
                                                             class_dict=config['class_dict'],
-                                                            k_fold=config.get('k_fold', None))
+                                                            k_fold=config.get('k_fold', None),
+                                                            medal_id=config.get('medal_id', None))
 
     # Initialize model
     model = init_model(**config)

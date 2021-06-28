@@ -16,6 +16,14 @@ def metrics_table(y_true, y_pred, class_dict):
     Returns:
         (pd.Dataframe): Dataframe with metrics
     """
+
+    # Remove classes with no samples
+    class_type = {v: k for k, v in class_dict.items()}
+    tmp_dict = {}
+    for label in set(y_true):
+        tmp_dict[class_type[label]] = label
+    class_dict = tmp_dict
+
     class_dict_values = list(class_dict.values())
     class_dict_keys = list(class_dict.keys())
 
@@ -33,3 +41,15 @@ def metrics_table(y_true, y_pred, class_dict):
                       index=class_dict_keys + ['Mean'])
 
     return df
+
+
+if __name__ == '__main__':
+    y_true = [1,1,1,3,3,3,4,4,4]
+    y_pred = [1,1,1,3,3,3,4,4,4]
+    class_dict = {
+        'a': 1,
+        'b': 2,
+        'c': 3,
+        'e': 4
+    }
+    print(metrics_table(y_true, y_pred, class_dict))
