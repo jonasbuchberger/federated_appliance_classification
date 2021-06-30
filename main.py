@@ -49,16 +49,16 @@ if __name__ == '__main__':
         'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau,
         'scheduler_kwargs': {'factor': 0.1, 'patience': 3, 'mode': 'max'},
         'early_stopping': 5,
-        'model_kwargs': {'name': 'CNN1D', 'num_layers': 4, 'start_size': 28},
+        'model_kwargs': {'name': 'DENSE', 'num_layers': 4, 'start_size': 22},
         'class_dict': class_dict,
         'features': None,
         'experiment_name': None,
         'use_synthetic': False,
     }
 
-    for m in ['CNN1D', 'LSTM', 'RESNET', 'DENSE']:
-        config['model_kwargs']['name'] = m
-        run_experiment(path_to_data, **config)
+    #for m in ['CNN1D', 'LSTM', 'RESNET', 'DENSE']:
+    #    config['model_kwargs']['name'] = m
+    #    run_experiment(path_to_data, **config)
 
     feature_dict = {
         'train': [RandomAugment(),
@@ -66,7 +66,14 @@ if __name__ == '__main__':
         'val': [RandomAugment(p=0),
                 MFCC()]
     }
-    config['features'] = feature_dict
+
+    # Model per medal
+    for medal_id in range(1, 16):
+        config['features'] = feature_dict
+        config['experiment_name'] = f'medal_{medal_id}'
+        config['medal_id'] = medal_id
+        run_config(path_to_data, **config)
+
     #run_config(path_to_data, **config)
     #run_k_fold(path_to_data, 10, **config)
 

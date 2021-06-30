@@ -11,6 +11,13 @@ then
   do
     rsync --include={src/data,src/models} --exclude={data,models,notebooks,.old,__pycache__,.idea,.git} -av -e "ssh -i ~/.ssh/id_rsa" "$BASE_DIR/federated_blond" ubuntu@"${IP_ARR[i]}":~ --delete
   done
+elif [[ $1 == "models" ]]
+then
+  for i in "${!IP_ARR[@]}"
+  do
+    rsync -av -e "ssh -i ~/.ssh/id_rsa" ubuntu@"${IP_ARR[i]}":~/federated_blond/models "$BASE_DIR/federated_blond"
+    ssh -t -i ~/.ssh/id_rsa ubuntu@"${IP_ARR[i]}" sudo rm -r ~/federated_blond/models/*
+  done
 elif [[ $1 == "data" ]]
 then
   for i in "${!IP_ARR[@]}"

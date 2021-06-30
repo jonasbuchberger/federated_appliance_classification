@@ -115,6 +115,8 @@ class Server:
             # Validate aggregated model
             self._val(val_loader, model, criterion, i_agg, logger)
 
+            torch.save(model.state_dict(), f"{log_path}/model.pth")
+
             # Broadcast new model
             send_broadcast(model)
 

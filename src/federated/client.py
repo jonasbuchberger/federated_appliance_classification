@@ -2,13 +2,15 @@ import os
 import datetime
 import torch.distributed as dist
 from src.utils import ROOT_DIR
-from src.models.experiment_utils import get_datalaoders
+from src.models.experiment_utils import get_datalaoders, run_config
 from src.federated.federated_utils import receive_broadcast, send_gather
+
 
 
 class Client:
 
-    def __init__(self, rank, world_size, backend='gloo', master_addr='127.0.0.1', master_port='29500', path_to_data=None):
+    def __init__(self, rank, world_size, backend='gloo', master_addr='127.0.0.1', master_port='29500',
+                 path_to_data=None):
         """ Initializes the federated learning client
 
         Args:
@@ -42,7 +44,7 @@ class Client:
                                 rank=self.rank,
                                 world_size=self.world_size,
                                 init_method=init_method,
-                                #timeout=datetime.timedelta(0, 60),
+                                # timeout=datetime.timedelta(0, 60),
                                 )
 
     def run(self):
@@ -58,13 +60,13 @@ class Client:
         optim = config['optim'](model.parameters(), **config['optim_kwargs'])
         scheduler = config['scheduler'](optim, **config['scheduler_kwargs'])
 
-        train_loader, _, _ = get_datalaoders(path_to_data,
-                                             config['batch_size'],
-                                             use_synthetic=config['use_synthetic'],
-                                             features=config['features'],
-                                             #medal_id=self.rank,
-                                             r_split=(self.rank-1, self.world_size-1),
-                                             class_dict=config['class_dict'])
+        train_loader, val_loader, test_loader = get_datalaoders(path_to_data,
+                                                                config['batch_size'],
+                                                                use_synthetic=config['use_synthetic'],
+                                                                features=config['features'],
+                                                                medal_id=self.rank,
+                                                                # r_split=(self.rank-1, self.world_size-1),
+                                                                class_dict=config['class_dict'])
 
         aggregation_rounds = int(total_epochs / local_epochs)
         for agg_i in range(0, aggregation_rounds):
@@ -92,3 +94,24 @@ class Client:
             lr = optim.param_groups[0]['lr']
             optim = config['optim'](model.parameters(), lr, config['optim_kwargs']['weight_decay'])
             scheduler = config['scheduler'](optim, **config['scheduler_kwargs'])
+
+        if config.get('transfer', False):
+            # Freeze all weights except classifier
+            for name, param in model.named_parameters():
+                if 'classifier' not in name:
+                    param.requires_grad = False
+
+            config['optim_kwargs']['lr'] = 0.001
+            config['optim_kwargs']['weight_decay'] = 0.0
+            config['num_epochs'] = 5
+            config['medal_id'] = self.rank
+
+            exp_name = f'transfer_{self.rank}_ne-{config["num_epochs"]}_lr-{config["optim_kwargs"]["lr"]}'
+            config['run_name'] = ''
+            config['experiment_name'] = os.path.join(ROOT_DIR,
+                                                     'models',
+                                                     config['experiment_name'],
+                                                     config.get('run_name', ''),
+                                                     exp_name)
+
+            run_config(os.path.join(ROOT_DIR, 'data'), **config)

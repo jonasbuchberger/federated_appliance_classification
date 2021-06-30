@@ -15,12 +15,12 @@ def run(rank, world_size, master_addr):
     if rank == 0:
         config = {
             'batch_size': 128,
-            'total_epochs': 60,
-            'local_epochs': 5,
+            'total_epochs': 30,
+            'local_epochs': 1,
             'seq_len': 190,
             'criterion': torch.nn.CrossEntropyLoss(),
             'optim': torch.optim.SGD,
-            'optim_kwargs': {'lr': 0.001, 'weight_decay': 0.0},
+            'optim_kwargs': {'lr': 0.059, 'weight_decay': 0.001},
             'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau,
             'scheduler_kwargs': {'factor': 0.1, 'patience': 3, 'mode': 'max'},
             'model_kwargs': {'name': 'CNN1D', 'num_layers': 4, 'start_size': 28},
@@ -28,6 +28,7 @@ def run(rank, world_size, master_addr):
             'features': None,
             'experiment_name': None,
             'use_synthetic': False,
+            'transfer': True
         }
 
         feature_dict = {
