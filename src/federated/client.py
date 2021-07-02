@@ -101,17 +101,17 @@ class Client:
                 if 'classifier' not in name:
                     param.requires_grad = False
 
-            config['optim_kwargs']['lr'] = 0.001
+            config['optim_kwargs']['lr'] = 0.075
             config['optim_kwargs']['weight_decay'] = 0.0
-            config['num_epochs'] = 5
+            config['num_epochs'] = 10
             config['medal_id'] = self.rank
 
             exp_name = f'transfer_{self.rank}_ne-{config["num_epochs"]}_lr-{config["optim_kwargs"]["lr"]}'
-            config['run_name'] = ''
             config['experiment_name'] = os.path.join(ROOT_DIR,
                                                      'models',
                                                      config['experiment_name'],
                                                      config.get('run_name', ''),
                                                      exp_name)
 
+            config['run_name'] = ''
             run_config(os.path.join(ROOT_DIR, 'data'), **config)

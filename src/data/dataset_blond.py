@@ -11,19 +11,18 @@ from src.utils import ROOT_DIR
 
 
 TYPE_CLASS = {
-    #'Battery Charger': 0,
-    'Daylight': 0,
-    'Dev Board': 1,
-    'Fan': 2,
-    'Laptop': 3,
-    'Monitor': 4,
-    'PC': 5,
-    'Printer': 6,
-    'Projector': 7,
-    'Screen Motor': 8,
-    'USB Charger': 9,
-    #'Multi-Tool': 10,
-    #'Kettle: 11
+    'Battery Charger': 0,
+    'Daylight': 1,
+    'Dev Board': 2,
+    'Fan': 3,
+    'Kettle': 4,
+    'Laptop': 5,
+    'Monitor': 6,
+    'PC': 7,
+    'Printer': 8,
+    'Projector': 9,
+    'Screen Motor': 10,
+    'USB Charger': 11,
 }
 
 
@@ -55,7 +54,7 @@ class BLOND(Dataset):
         if self.use_synthetic:
             self.labels = pd.read_csv(os.path.join(path_to_data, 'events_syn.csv'), index_col=0)
         else:
-            self.labels = pd.read_csv(os.path.join(path_to_data, 'events_new.csv'), index_col=0)
+            self.labels = pd.read_csv(os.path.join(path_to_data, 'events_medal.csv'), index_col=0)
             self.labels['synthetic'] = 0
 
         # Filter labels for classes in class_dict

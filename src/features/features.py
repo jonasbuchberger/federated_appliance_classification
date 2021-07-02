@@ -202,7 +202,7 @@ class MelSpectrogram(object):
         self.n_fft = int(measurement_frequency / net_frequency) * 2 - 1
         self.hop_length = int((self.n_fft / 2) + 1)
         self.torch_mel_spec = torchaudio.transforms.MelSpectrogram(sample_rate=measurement_frequency, n_fft=self.n_fft,
-                                                                   hop_length=self.hop_length)
+                                                                   hop_length=self.hop_length, n_mels=64)
         self.feature_dim = self.torch_mel_spec.n_mels
 
     def __call__(self, sample):
@@ -220,7 +220,7 @@ class MelSpectrogram(object):
                                                       center=True,
                                                       pad_mode="reflect",
                                                       power=2.0,
-                                                      n_mels=128,
+                                                      n_mels=64,
                                                       norm=None,
                                                       htk=True)
             mel_spec = torch.as_tensor(mel_spec)
@@ -246,7 +246,9 @@ class MFCC(object):
         self.n_fft = int(measurement_frequency / net_frequency) * 2 - 1
         self.hop_length = int((self.n_fft / 2) + 1)
         self.torch_mfcc = torchaudio.transforms.MFCC(sample_rate=measurement_frequency, n_mfcc=64,
-                                                     melkwargs={"n_fft": self.n_fft, "hop_length": self.hop_length})
+                                                     melkwargs={"n_fft": self.n_fft,
+                                                                "hop_length": self.hop_length,
+                                                                'n_mels': 64})
         self.feature_dim = self.torch_mfcc.n_mfcc
 
     def __call__(self, sample):
@@ -262,8 +264,9 @@ class MFCC(object):
                                         n_mfcc=64,
                                         hop_length=self.hop_length,
                                         n_fft=self.n_fft,
-                                        n_mels=128,
+                                        n_mels=64,
                                         htk=True)
+
             mfcc = torch.as_tensor(mfcc)
 
         if features is None:
