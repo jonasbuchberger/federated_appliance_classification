@@ -16,7 +16,7 @@ then
   for i in "${!IP_ARR[@]}"
   do
     rsync -av -e "ssh -i ~/.ssh/id_rsa" ubuntu@"${IP_ARR[i]}":~/federated_blond/models "$BASE_DIR/federated_blond"
-    ssh -t -i ~/.ssh/id_rsa ubuntu@"${IP_ARR[i]}" sudo rm -r ~/federated_blond/models/*
+    ssh -t -i ~/.ssh/id_rsa ubuntu@"${IP_ARR[i]}" sudo rm -r ~/federated_blond/models/
   done
 elif [[ $1 == "data" ]]
 then
