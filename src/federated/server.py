@@ -30,6 +30,8 @@ class Server:
         self.master_addr = '127.0.0.1'
         self.master_port = '29500'
 
+        self.model_weights = torch.ones(self.world_size-1)
+
         if self.path_to_data is None:
             self.path_to_data = os.path.join(ROOT_DIR, 'data')
 
@@ -109,8 +111,13 @@ class Server:
             # Gather trained models
             model_list = receive_gather(self.world_size)
 
+            if self.config['weighted']:
+                self._update_weights(model_list, model, criterion, val_loader)
+                if torch.isnan(self.model_weights).any():
+                    break
+
             # AVG models
-            model = weighted_model_average(model_list)
+            model = weighted_model_average(model_list, self.model_weights)
 
             # Validate aggregated model
             self._val(val_loader, model, criterion, i_agg, logger)
@@ -137,7 +144,6 @@ class Server:
         print('Finished Testing')
 
     def _val(self, val_loader, model, criterion, i_agg, logger):
-
         num_correct = 0
         num_samples = 0
         y_target_list = []
@@ -168,3 +174,38 @@ class Server:
         logger.add_scalar('Validation/F1_Score', epoch_f1, i_agg)
         logger.add_scalar('Validation/Accuracy', epoch_val_accuracy, i_agg)
         logger.add_scalar('Loss/Validation', epoch_val_loss, i_agg)
+
+    def _update_weights(self, model_list, model, criterion, val_loader):
+        num_val_batches = len(val_loader)
+        model = model.eval()
+        loss = 0
+        with torch.no_grad():
+            for data in val_loader:
+                x, y_target = data
+                loss += criterion(model(x), y_target)
+            loss = loss / num_val_batches
+
+        for i, model_i in enumerate(model_list):
+            model_i = model_i.eval()
+            with torch.no_grad():
+                loss_i = 0
+                for data in val_loader:
+                    x, y_target = data
+                    loss_i += criterion(model_i(x), y_target)
+                loss_i = loss_i / num_val_batches
+                self.model_weights[i] = (loss - loss_i) / self._model_norm(model, model_i)
+
+        #self.model_weights[self.model_weights < 0] = 0
+        #self.model_weights = self.model_weights / torch.sum(self.model_weights)
+
+    def _model_norm(self, model_n, model_i):
+        model_dict = model_n.state_dict()
+        layer_norms = []
+        for layer in model_dict.keys():
+            if 'num_batches_tracked' not in layer:
+                model_dict[layer] -= model_i.state_dict()[layer]
+
+                layer_norms.append(torch.linalg.norm(model_dict[layer]))
+
+        norm = torch.linalg.norm(torch.as_tensor(layer_norms)) + 1e-5
+        return norm

@@ -99,7 +99,7 @@ class BLOND(Dataset):
 
         # Filter for medal unit
         if medal_id is not None:
-            self.labels = self.labels[self.labels['Medal'] == str(medal_id)]
+            self.labels = self.labels[self.labels['Medal'] == medal_id]
 
     def __len__(self):
         return len(self.labels)
@@ -136,15 +136,15 @@ class BLOND(Dataset):
 
 if __name__ == '__main__':
     class_dict = {
-        'PC': 0
+        'Kettle': 0
     }
 
     path = os.path.join(ROOT_DIR, 'data')
     import matplotlib.pyplot as plt
-    from src.features.features import COT
-    dataset = BLOND('all', path, class_dict=class_dict)
+    from src.features.features import COT, ACPower
+    dataset = BLOND('all', path, class_dict=class_dict, use_synthetic=True, transform=ACPower())
     for i in dataset:
-        c, _, _ = i
-        plt.plot(c)
+        c, _, = i
+        plt.plot(c[0][90:110])
         plt.show()
 

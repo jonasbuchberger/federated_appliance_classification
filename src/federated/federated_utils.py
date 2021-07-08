@@ -56,21 +56,21 @@ def weighted_model_average(model_list, weight_list=None):
 
     Args:
         model_list (list): List of models
-        weight_list (list): List of weights for each model.
+        weight_list (torch.Tensor): List of weights for each model.
 
     Returns:
         (nn.Module): The new aggregated model
     """
     model_dict = model_list[0].state_dict()
     if weight_list is not None:
-        weight_list = softmax(torch.as_tensor(weight_list, dtype=torch.float), dim=0)
+        weight_list = softmax(weight_list, dim=0)
 
         for layer in model_dict.keys():
             model_dict[layer] = model_dict[layer] * weight_list[0]
 
         for layer in model_dict.keys():
             for i, model in enumerate(model_list[1:]):
-                model_dict[layer] += model.state_dict()[layer] * weight_list[i+1]
+                model_dict[layer] += model.state_dict()[layer] * weight_list[i + 1]
 
     else:
         for layer in model_dict.keys():
@@ -113,9 +113,3 @@ def get_pi_usage(start_time, end_time, dest_path):
 
     connection.close()
 
-
-if __name__ == '__main__':
-    model = nn.Linear(300, 300)
-    model_list = [model, model, model, model]
-    weight_list = [1, 2, 3, 4]
-    model = weighted_model_average(model_list, weight_list)

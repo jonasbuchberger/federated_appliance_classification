@@ -143,7 +143,7 @@ class BLOND(Dataset):
         self.path_to_data = path_to_data
         self.class_dict = class_dict
 
-        self.labels = pd.read_csv(os.path.join(path_to_data, 'events_new.csv'), index_col=0)
+        self.labels = pd.read_csv(os.path.join(path_to_data, 'events_medal.csv'), index_col=0)
 
         # Filter labels for classes in class_dict
         self.labels = self.labels[self.labels['Type'].isin(self.class_dict.keys())]
@@ -163,10 +163,10 @@ class BLOND(Dataset):
 
         # Filter for medal unit
         if medal_id is not None:
-            self.labels = self.labels[self.labels['Medal'] == medal_id]
+            self.labels = self.labels[self.labels['Medal'] == str(medal_id)]
 
     def __len__(self):
-        return len(self.labels)
+        return max(len(self.labels), 128)
 
     def __getitem__(self, idx):
         row = self.labels.iloc[idx]
@@ -206,7 +206,7 @@ def create_synthetic_data(path_to_data, generator, class_dict, num_rounds=1):
         for i in range(0, len(dataset) * num_rounds):
             idx = i % len(dataset)
             current, voltage, class_id = dataset[idx]
-            noise = (current + current.data.new(current.size()).normal_(0, 0.1)).unsqueeze(0).unsqueeze(0).to(device)
+            noise = (current + current.data.new(current.size()).normal_(0, 0.01)).unsqueeze(0).unsqueeze(0).to(device)
             # Generate new sample with original data and added noise
             gen_current = generator(noise).detach().cpu().squeeze()
 
@@ -232,7 +232,7 @@ def create_synthetic_data(path_to_data, generator, class_dict, num_rounds=1):
     if os.path.isfile(os.path.join(ROOT_DIR, 'data/events_syn.csv')):
         df_2 = pd.read_csv(os.path.join(ROOT_DIR, 'data/events_syn.csv'), index_col=0)
     else:
-        df_2 = pd.read_csv(os.path.join(ROOT_DIR, 'data/events_syn_base.csv'), index_col=0)
+        df_2 = pd.read_csv(os.path.join(ROOT_DIR, 'data/events_medal.csv'), index_col=0)
         df_2['synthetic'] = 0
     df_2 = df_2.append(df, ignore_index=True)
     df_2.to_csv(os.path.join(ROOT_DIR, 'data/events_syn.csv'))
@@ -242,20 +242,23 @@ if __name__ == '__main__':
     path_to_data = os.path.join(ROOT_DIR, 'data')
 
     class_dict = {
-        'Battery Charger': 0,
+        #'Battery Charger': 0,
         'Daylight': 1,
-        'Dev Board': 2,
-        #'Laptop': 3,
-        #'Monitor': 4,
-        #'PC': 5,
-        #'Printer': 6,
-        #'Projector': 7,
-        #'Screen Motor': 8,
-        #'USB Charger': 9
-    }
+        #'Dev Board': 2,
+        #'Fan': 3,
+        #'Kettle': 4,
+        #'Laptop': 5,
+        #'Monitor': 6,
+        #'PC': 7,
+        #'Printer': 8,
+        #'Projector': 9,
+        #'Screen Motor': 10,
+        #'USB Charger': 11,
+        }
+
     for class_i in list(class_dict.keys()):
         path_to_model = os.path.join(ROOT_DIR, 'notebooks', 'generator', f'generator_model_{class_i}.pth')
         generator = Generator()
         generator.load_state_dict(torch.load(path_to_model))
         tmp_dict = {f'{class_i}': class_dict[class_i]}
-        create_synthetic_data(path_to_data, generator, tmp_dict, 4)
+        create_synthetic_data(path_to_data, generator, tmp_dict, 6)

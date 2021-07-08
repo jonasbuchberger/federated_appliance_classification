@@ -65,7 +65,7 @@ class Client:
                                                                 use_synthetic=config['use_synthetic'],
                                                                 features=config['features'],
                                                                 medal_id=self.rank,
-                                                                # r_split=(self.rank-1, self.world_size-1),
+                                                                #r_split=(self.rank-1, self.world_size-1),
                                                                 class_dict=config['class_dict'])
 
         aggregation_rounds = int(total_epochs / local_epochs)
@@ -101,9 +101,9 @@ class Client:
                 if 'classifier' not in name:
                     param.requires_grad = False
 
-            config['optim_kwargs']['lr'] = 0.075
-            config['optim_kwargs']['weight_decay'] = 0.0
-            config['num_epochs'] = 10
+            config['optim_kwargs']['lr'] = config['transfer_kwargs']['lr']
+            config['optim_kwargs']['weight_decay'] = config['transfer_kwargs']['weight_decay']
+            config['num_epochs'] = config['transfer_kwargs']['num_epochs']
             config['medal_id'] = self.rank
 
             exp_name = f'transfer_{self.rank}_ne-{config["num_epochs"]}_lr-{config["optim_kwargs"]["lr"]}'
