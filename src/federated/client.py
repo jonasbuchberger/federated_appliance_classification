@@ -44,12 +44,13 @@ class Client:
                                 rank=self.rank,
                                 world_size=self.world_size,
                                 init_method=init_method,
-                                # timeout=datetime.timedelta(0, 60),
+                                timeout=datetime.timedelta(0, 10 * 1800),
                                 )
 
     def run(self):
         # Receive train config from master
         config = receive_broadcast()
+
         # Get initial model
         model = receive_broadcast()
 
@@ -115,3 +116,5 @@ class Client:
 
             config['run_name'] = ''
             run_config(os.path.join(ROOT_DIR, 'data'), **config)
+
+            dist.barrier()

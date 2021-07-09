@@ -1,3 +1,4 @@
+import os
 import torch
 torch.set_num_threads(1)
 import warnings
@@ -5,6 +6,8 @@ import argparse
 from src.data.dataset_blond import TYPE_CLASS
 from src.federated.server import Server
 from src.federated.client import Client
+from src.federated.federated_utils import get_pi_usage
+from datetime import datetime, timedelta
 import torch.multiprocessing as mp
 
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -28,9 +31,9 @@ def run(rank, world_size, master_addr):
             'features': None,
             'experiment_name': None,
             'use_synthetic': True,
-            'transfer': False,
+            'transfer': True,
             'transfer_kwargs': {'lr': 0.075, 'weight_decay': 0.0, 'num_epochs': 10},
-            'weighted': True
+            'weighted': False
         }
 
         feature_dict = {
@@ -43,9 +46,15 @@ def run(rank, world_size, master_addr):
         }
         config['features'] = feature_dict
 
+        start_time = datetime.now()
+
         server = Server(world_size, config)
         server.init_process()
-        server.run()
+        log_path = server.run()
+
+        end_time = datetime.now()
+        print('-----------------Finished------------------')
+        get_pi_usage(start_time, end_time, os.path.join(log_path, 'pi_logs'))
     else:
         client = Client(rank, world_size, master_addr=master_addr)
         client.init_process()

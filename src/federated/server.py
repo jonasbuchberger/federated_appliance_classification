@@ -1,14 +1,14 @@
 import os
 import json
 import torch
-from datetime import datetime, timedelta
+from datetime import timedelta
 from tqdm import tqdm
 import torch.distributed as dist
 from sklearn.metrics import precision_recall_fscore_support
 from src.utils import ROOT_DIR, SummaryWriter
 from src.models.test import test
 from src.models.experiment_utils import init_model, get_datalaoders
-from src.federated.federated_utils import receive_gather, send_broadcast, weighted_model_average, get_pi_usage
+from src.federated.federated_utils import receive_gather, send_broadcast, weighted_model_average
 
 
 class Server:
@@ -44,11 +44,13 @@ class Server:
         if 'tcp' in self.master_addr:
             init_method = f'{self.master_addr}:{self.master_port}'
 
+        timeout = max([self.config['local_epochs'], self.config.get('transfer_kwargs', {}).get('num_epochs', 0)])
+
         dist.init_process_group(self.backend,
                                 rank=0,
                                 world_size=self.world_size,
                                 init_method=init_method,
-                                timeout=timedelta(0, self.config['local_epochs'] * 1800),
+                                timeout=timedelta(0, timeout * 1800),
                                 )
 
     def _setup_experiment(self, config):
@@ -79,8 +81,6 @@ class Server:
         return config
 
     def run(self):
-        start_time = datetime.now()
-
         total_epochs = self.config['total_epochs']
         local_epochs = self.config['local_epochs']
         criterion = self.config['criterion']
@@ -127,8 +127,7 @@ class Server:
             # Broadcast new model
             send_broadcast(model)
 
-        end_time = datetime.now()
-        print(f'Finished Training: {(end_time - start_time).total_seconds() / 60} mins')
+        print('Finished Aggregating')
 
         test(model, test_loader, **self.config)
 
@@ -140,8 +139,14 @@ class Server:
             text_file.write(str(model))
         text_file.close()
 
-        get_pi_usage(start_time, end_time, os.path.join(log_path, 'pi_logs'))
         print('Finished Testing')
+
+        # If transfer is True wait for all pis to finish to measure usage
+        if self.config.get('transfer', False):
+            print('Waiting for all clients finished transferring')
+            torch.distributed.barrier()
+
+        return log_path
 
     def _val(self, val_loader, model, criterion, i_agg, logger):
         num_correct = 0
@@ -185,15 +190,15 @@ class Server:
                 loss += criterion(model(x), y_target)
             loss = loss / num_val_batches
 
-        for i, model_i in enumerate(model_list):
-            model_i = model_i.eval()
-            with torch.no_grad():
-                loss_i = 0
-                for data in val_loader:
-                    x, y_target = data
-                    loss_i += criterion(model_i(x), y_target)
-                loss_i = loss_i / num_val_batches
-                self.model_weights[i] = (loss - loss_i) / self._model_norm(model, model_i)
+            for i, model_i in enumerate(model_list):
+                model_i = model_i.eval()
+                with torch.no_grad():
+                    loss_i = 0
+                    for data in val_loader:
+                        x, y_target = data
+                        loss_i += criterion(model_i(x), y_target)
+                    loss_i = loss_i / num_val_batches
+                    self.model_weights[i] = (loss - loss_i) / self._model_norm(model, model_i)
 
         #self.model_weights[self.model_weights < 0] = 0
         #self.model_weights = self.model_weights / torch.sum(self.model_weights)
