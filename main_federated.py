@@ -1,4 +1,5 @@
 import os
+import time
 import torch
 torch.set_num_threads(1)
 import warnings
@@ -18,20 +19,20 @@ def run(rank, world_size, master_addr):
     if rank == 0:
         config = {
             'batch_size': 128,
-            'total_epochs': 30,
+            'total_epochs': 200,
             'local_epochs': 1,
             'seq_len': 190,
             'criterion': torch.nn.CrossEntropyLoss(),
             'optim': torch.optim.SGD,
-            'optim_kwargs': {'lr': 0.059, 'weight_decay': 0.0},
+            'optim_kwargs': {'lr': 0.001, 'weight_decay': 0.001},
             'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau,
             'scheduler_kwargs': {'factor': 0.1, 'patience': 3, 'mode': 'max'},
-            'model_kwargs': {'name': 'DENSE', 'num_layers': 4, 'start_size': 28},
+            'model_kwargs': {'name': 'CNN1D', 'num_layers': 4, 'start_size': 15},
             'class_dict': TYPE_CLASS,
             'features': None,
             'experiment_name': None,
             'use_synthetic': True,
-            'transfer': True,
+            'transfer': False,
             'transfer_kwargs': {'lr': 0.075, 'weight_decay': 0.0, 'num_epochs': 10},
             'weighted': False
         }
@@ -47,14 +48,14 @@ def run(rank, world_size, master_addr):
         config['features'] = feature_dict
 
         start_time = datetime.now()
-
+        start_time = start_time - timedelta(seconds=30)
         server = Server(world_size, config)
         server.init_process()
         log_path = server.run()
-
+        time.sleep(30)
         end_time = datetime.now()
-        print('-----------------Finished------------------')
         get_pi_usage(start_time, end_time, os.path.join(log_path, 'pi_logs'))
+        print('-----------------Finished-----------------')
     else:
         client = Client(rank, world_size, master_addr=master_addr)
         client.init_process()

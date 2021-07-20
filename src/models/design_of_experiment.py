@@ -34,7 +34,7 @@ def lh(boundaries: np.array,
     :return: np.array, samples withing the variable space
     """
     boundaries = np.array(boundaries)
-    sampling = LHS(xlimits=boundaries)
+    sampling = LHS(xlimits=boundaries, criterion='ese')
     samples = sampling(nr_of_samples)
 
     return samples

@@ -65,12 +65,12 @@ class BLOND(Dataset):
             fold_i, num_folds = self.k_fold
             kf = KFold(n_splits=num_folds, random_state=1000, shuffle=True)
             train_split, test_split = list(kf.split(self.labels))[fold_i]
-            df_train = self.labels.loc[train_split]
-            df_train.loc[train_split, 'fold'] = 'train'
-            df_test = self.labels.loc[test_split]
-            df_test.loc[test_split, 'fold'] = 'test'
-            df_val = self.labels.loc[test_split]
-            df_val.loc[test_split, 'fold'] = 'val'
+            df_train = self.labels.iloc[train_split]
+            df_train['fold'] = 'train'
+            df_test = self.labels.iloc[test_split]
+            df_test['fold'] = 'test'
+            df_val = self.labels.iloc[test_split]
+            df_val['fold'] = 'val'
             self.labels = df_train.append((df_val, df_test), ignore_index=True)
 
         # Random split (train) dataset in num_split parts
