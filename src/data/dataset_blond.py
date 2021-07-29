@@ -63,7 +63,7 @@ class BLOND(Dataset):
         # Create k-fold set up
         if self.k_fold is not None:
             fold_i, num_folds = self.k_fold
-            kf = KFold(n_splits=num_folds, random_state=1000, shuffle=True)
+            kf = KFold(n_splits=num_folds, random_state=998, shuffle=True)
             train_split, test_split = list(kf.split(self.labels))[fold_i]
             df_train = self.labels.iloc[train_split]
             df_train['fold'] = 'train'
@@ -135,16 +135,9 @@ class BLOND(Dataset):
 
 
 if __name__ == '__main__':
-    class_dict = {
-        'Kettle': 0
-    }
-
     path = os.path.join(ROOT_DIR, 'data')
-    import matplotlib.pyplot as plt
-    from src.features.features import COT, ACPower
-    dataset = BLOND('all', path, class_dict=class_dict, use_synthetic=True, transform=ACPower())
-    for i in dataset:
-        c, _, = i
-        plt.plot(c[0][90:110])
-        plt.show()
+    for i in range(0, 10):
+        dataset = BLOND('train', path, use_synthetic=True, r_split=(i, 10))
+        print(len(dataset))
+        #print(dataset.labels['Type'].value_counts())
 

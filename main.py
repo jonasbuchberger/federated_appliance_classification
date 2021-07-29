@@ -30,32 +30,30 @@ if __name__ == '__main__':
 
     config = {
         'batch_size': 128,
-        'num_epochs': 20,
+        'num_epochs': 50,
         'seq_len': 190,
         'criterion': torch.nn.CrossEntropyLoss(),
         'optim': torch.optim.SGD,
-        'optim_kwargs': {'lr': 0.061, 'weight_decay': 0.001},
+        'optim_kwargs': {'lr': 0.01, 'weight_decay': 0.001},
         'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau,
         'scheduler_kwargs': {'factor': 0.1, 'patience': 3, 'mode': 'max'},
+        'model_kwargs': {'name': 'CNN1D', 'num_layers': 2, 'start_size': 10},
         'early_stopping': 5,
-        'model_kwargs': {'name': 'CNN1D', 'num_layers': 4, 'start_size': 15},
         'class_dict': class_dict,
         'features': None,
         'experiment_name': None,
         'use_synthetic': True,
     }
 
-    #for m in ['CNN1D', 'LSTM', 'RESNET', 'DENSE']:
-    #    config['model_kwargs']['name'] = m
-    #    run_experiment(path_to_data, **config)
+    for m in ['CNN1D', 'LSTM', 'RESNET', 'DENSE']:
+        config['model_kwargs']['name'] = m
+        run_experiment(path_to_data, **config)
 
     feature_dict = {
         'train': [RandomAugment(),
-                  MFCC(),
-                  COT()],
+                  MFCC()],
         'val': [RandomAugment(p=0),
-                MFCC(),
-                COT()]
+                MFCC()]
     }
 
     # Model per medal
@@ -67,7 +65,7 @@ if __name__ == '__main__':
 
     config['features'] = feature_dict
     #run_config(path_to_data, **config)
-    run_k_fold(path_to_data, 10, **config)
+    #run_k_fold(path_to_data, 10, **config)
 
 
 

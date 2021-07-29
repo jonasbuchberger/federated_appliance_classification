@@ -30,7 +30,7 @@ class Server:
         self.master_addr = '127.0.0.1'
         self.master_port = '29500'
 
-        self.model_weights = torch.ones(self.world_size-1)
+        self.model_weights = torch.ones(self.world_size - 1)
 
         if self.path_to_data is None:
             self.path_to_data = os.path.join(ROOT_DIR, 'data')
@@ -44,7 +44,8 @@ class Server:
         if 'tcp' in self.master_addr:
             init_method = f'{self.master_addr}:{self.master_port}'
 
-        timeout = max([self.config['local_epochs'], self.config.get('transfer_kwargs', {}).get('num_epochs', 0)])
+        timeout = max([self.config['epochs']['local_steps'],
+                       self.config.get('transfer_kwargs', {}).get('num_epochs', 0)])
 
         dist.init_process_group(self.backend,
                                 rank=0,
@@ -75,17 +76,23 @@ class Server:
                                  f"wd-{config['optim_kwargs']['weight_decay']}_" \
                                  f"nl-{config['model_kwargs']['num_layers']}_" \
                                  f"ss-{config['model_kwargs']['start_size']}_" \
-                                 f"te-{config['total_epochs']}_" \
-                                 f"le-{config['local_epochs']}"
-
+                                 f"agg-{config['epochs']['agg_rounds']}_" \
+                                 f"{config['epochs']['mode']}-{config['epochs']['local_steps']}_" \
+                                 f"{config['setting']}"
         return config
 
     def run(self):
-        total_epochs = self.config['total_epochs']
-        local_epochs = self.config['local_epochs']
+        aggregation_rounds = self.config['epochs']['agg_rounds']
         criterion = self.config['criterion']
         experiment_name = self.config['experiment_name']
         run_name = self.config.get('run_name', '')
+        early_stopping = self.config.get('early_stopping', None)
+        patience = early_stopping
+        logging_factor = self.config.get('logging_factor', 1)
+
+        # Parameter assertions
+        assert (aggregation_rounds > 0)
+        assert (early_stopping is None or early_stopping > 0)
 
         _, val_loader, test_loader = get_datalaoders(self.path_to_data,
                                                      self.config['batch_size'],
@@ -106,7 +113,8 @@ class Server:
         print('Send model to clients.')
         send_broadcast(model)
 
-        aggregation_rounds = int(total_epochs / local_epochs)
+        best_f1 = 0
+        early_stopping_val_loss = None
         for i_agg in tqdm(range(0, aggregation_rounds)):
             # Gather trained models
             model_list = receive_gather(self.world_size)
@@ -120,9 +128,22 @@ class Server:
             model = weighted_model_average(model_list, self.model_weights)
 
             # Validate aggregated model
-            self._val(val_loader, model, criterion, i_agg, logger)
+            if i_agg % logging_factor == 0 or i_agg == aggregation_rounds - 1:
+                epoch_val_loss, epoch_f1 = self._val(val_loader, model, criterion, i_agg, logger)
 
-            torch.save(model.state_dict(), f"{log_path}/model.pth")
+                if best_f1 is None or best_f1 < epoch_f1:
+                    torch.save(model.state_dict(), f"{log_path}/model.pth")
+                    best_f1 = epoch_f1
+
+                if early_stopping is not None:
+                    if early_stopping_val_loss is not None and early_stopping_val_loss < epoch_val_loss:
+                        patience -= 1
+                    else:
+                        early_stopping_val_loss = epoch_val_loss
+                        patience = early_stopping
+                    if patience <= 0:
+                        dist.destroy_process_group()
+                        break
 
             # Broadcast new model
             send_broadcast(model)
@@ -180,6 +201,8 @@ class Server:
         logger.add_scalar('Validation/Accuracy', epoch_val_accuracy, i_agg)
         logger.add_scalar('Loss/Validation', epoch_val_loss, i_agg)
 
+        return epoch_val_loss, epoch_f1
+
     def _update_weights(self, model_list, model, criterion, val_loader):
         num_val_batches = len(val_loader)
         model = model.eval()
@@ -200,8 +223,8 @@ class Server:
                     loss_i = loss_i / num_val_batches
                     self.model_weights[i] = (loss - loss_i) / self._model_norm(model, model_i)
 
-        #self.model_weights[self.model_weights < 0] = 0
-        #self.model_weights = self.model_weights / torch.sum(self.model_weights)
+        # self.model_weights[self.model_weights < 0] = 0
+        # self.model_weights = self.model_weights / torch.sum(self.model_weights)
 
     def _model_norm(self, model_n, model_i):
         model_dict = model_n.state_dict()

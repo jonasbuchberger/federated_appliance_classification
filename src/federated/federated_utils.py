@@ -100,6 +100,7 @@ def get_pi_usage(start_time, end_time, dest_path):
 
     os.makedirs(dest_path, exist_ok=True)
 
+    data_power = pd.DataFrame()
     for pi in [17, 18, 19, 20, 21, 22, 23, 24, 41, 42, 43, 45, 46, 47, 48]:
         sql = f"SELECT time, memory_used, bytes_sent, bytes_recv, packets_recv, packets_sent, " \
               f"cpu0_user, cpu1_user, cpu2_user, cpu3_user, " \
@@ -109,7 +110,17 @@ def get_pi_usage(start_time, end_time, dest_path):
               f"ORDER BY time ASC;"
 
         data = pd.read_sql_query(sql, connection).set_index('time')
+
+        sql = f"SELECT time, raspi{pi}_power, raspi{pi}_ampere, raspi{pi}_voltage " \
+              f"FROM switch " \
+              f"WHERE time BETWEEN '{str(start_time)}' and '{str(end_time)}' " \
+              f"ORDER BY time ASC;"
+
+        tmp = pd.read_sql_query(sql, connection).set_index('time')
+        data_power = pd.concat([data_power, tmp], axis=1)
+
         data.to_csv(f'{dest_path}/raspi{pi}.csv')
 
+    data_power.to_csv(f'{dest_path}/raspi_power.csv')
     connection.close()
 

@@ -24,6 +24,7 @@ def train(model, train_loader, val_loader, **config):
 
     # Getting parameters from train_config
     early_stopping = config.get('early_stopping', None)
+    patience = early_stopping
     experiment_name = config['experiment_name']
     run_name = config['run_name']
     num_epochs = config['num_epochs']
@@ -38,8 +39,8 @@ def train(model, train_loader, val_loader, **config):
     num_train_batches = len(train_loader)
     num_val_batches = len(val_loader)
 
-    best_acc = None
-    best_f1 = None
+    best_acc = 0
+    best_f1 = 0
     early_stopping_val_loss = None
 
     model.to(device)
@@ -93,17 +94,21 @@ def train(model, train_loader, val_loader, **config):
         logger.add_scalar('Loss/Train', epoch_train_loss, i_epoch)
         logger.add_scalar('Loss/Validation', epoch_val_loss, i_epoch)
 
-        if best_f1 is None or best_f1 < epoch_f1:
+        # Save the model with best validation F1
+        if best_f1 < epoch_f1:
             torch.save(model.state_dict(), f"{log_path}/model.pth")
             best_f1 = epoch_f1
             best_acc = epoch_val_accuracy
 
-        if early_stopping is not None and i_epoch % early_stopping == 0:
+        # Early stopping with patience
+        if early_stopping is not None:
             if early_stopping_val_loss is not None and early_stopping_val_loss < epoch_val_loss:
-                break
+                patience -= 1
             else:
-                # torch.save(model.state_dict(), f"{log_path}/checkpoint_{i_epoch}.pth")
                 early_stopping_val_loss = epoch_val_loss
+                patience = early_stopping
+            if patience <= 0:
+                break
 
         scheduler.step(epoch_f1)
 
@@ -123,6 +128,9 @@ def train(model, train_loader, val_loader, **config):
     text_file.close()
     with open(os.path.join(log_path, 'model.txt'), 'w') as text_file:
         text_file.write(str(model))
+    text_file.close()
+    with open(os.path.join(log_path, 'validation.txt'), 'w') as text_file:
+        text_file.write(str(best_f1))
     text_file.close()
 
     return os.path.join(log_path, 'model.pth'), best_f1
