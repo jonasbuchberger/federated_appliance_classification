@@ -1,4 +1,5 @@
 import warnings
+import os
 import numpy as np
 
 from datetime import datetime
@@ -10,6 +11,7 @@ from src.models.models import BlondConvNet, BlondLstmNet, BlondResNet, BlondDens
 from src.models.test import test
 from src.models.train import train
 from src.models.design_of_experiment import lh
+from src.utils import ROOT_DIR
 
 warnings.filterwarnings("ignore", category=UserWarning)
 from src.features.features import *
@@ -82,7 +84,7 @@ def run_config(path_to_data, **config):
 
     test(model, test_loader, **config)
 
-    return best_f1
+    return best_f1, os.path.join(ROOT_DIR, 'models', config['experiment_name'], config['run_name'])
 
 
 def run_experiment(path_to_data, num_experiments=6, **config):
@@ -142,7 +144,7 @@ def run_experiment(path_to_data, num_experiments=6, **config):
                 config['optim_kwargs']['weight_decay'] = np.round(experiments[i][1], 3)
                 config['model_kwargs']['num_layers'] = int(np.round(experiments[i][2], 0))
                 config['model_kwargs']['start_size'] = int(np.round(experiments[i][3], 0))
-                f1 = run_config(path_to_data, **config)
+                f1, _ = run_config(path_to_data, **config)
                 if best_run_f1 < f1:
                     best_run_f1 = f1
 

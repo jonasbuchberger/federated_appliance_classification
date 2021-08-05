@@ -26,10 +26,17 @@ def run(rank, world_size, master_addr):
             'seq_len': 190,
             'criterion': torch.nn.CrossEntropyLoss(),
             'optim': torch.optim.SGD,
-            'optim_kwargs': {'lr': 0.045, 'weight_decay': 0.001},
-            'model_kwargs': {'name': 'LSTM', 'num_layers': 1, 'start_size': 23},
-            # 'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau,
+            # 'optim_kwargs': {'lr': 0.045, 'weight_decay': 0.001},
+            # 'model_kwargs': {'name': 'LSTM', 'num_layers': 1, 'start_size': 23},
+            'optim_kwargs': {'lr': 0.055, 'weight_decay': 0.0},
+            'model_kwargs': {'name': 'CNN1D', 'num_layers': 4, 'start_size': 19},
+            # 'optim_kwargs': {'lr': 0.075, 'weight_decay': 0.001},
+            # 'model_kwargs': {'name': 'DENSE', 'num_layers': 3, 'start_size': 12},
+            # 'optim_kwargs': {'lr': 0.052, 'weight_decay': 0.001},
+            # 'model_kwargs': {'name': 'RESNET', 'num_layers': 4, 'start_size': 20},
+            'scheduler': torch.optim.lr_scheduler.CosineAnnealingLR,
             # 'scheduler_kwargs': {'factor': 0.1, 'patience': 3, 'mode': 'min'},
+            'scheduler_kwargs': {'T_max': 100, 'verbose': True},
             'class_dict': TYPE_CLASS,
             'features': None,
             'experiment_name': None,
@@ -37,16 +44,16 @@ def run(rank, world_size, master_addr):
             'transfer': False,
             'transfer_kwargs': {'lr': 0.075, 'weight_decay': 0.0, 'num_epochs': 10},
             'weighted': False,
-            'early_stopping': 5,
+            'early_stopping': 100,
         }
 
         feature_dict = {
             'train': [RandomAugment(),
-                      ACPower(),
-                      MFCC()],
+                      MFCC(),
+                      DCS()],
             'val': [RandomAugment(p=0),
-                    ACPower(),
-                    MFCC()],
+                    MFCC(),
+                    DCS()],
         }
         config['features'] = feature_dict
 

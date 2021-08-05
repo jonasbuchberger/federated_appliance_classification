@@ -82,15 +82,19 @@ def weighted_model_average(model_list, weight_list=None):
     return model_list[0]
 
 
-def get_pi_usage(start_time, end_time, dest_path):
+def get_pi_usage(start_time, end_time, dest_path, pis=None):
     """ Gets pi usage information from postgressSQL database.
 
     Args:
         start_time (datetime): Start of training
         end_time (datetime): End of testing
         dest_path (string): Path to destination of logs
+        pis (list): List of pis to get the usage information
     """
     import psycopg2
+
+    if pis is None:
+        pis = [17, 18, 19, 20, 21, 22, 23, 24, 41, 42, 43, 45, 46, 47, 48]
 
     connection = psycopg2.connect(host="131.159.52.93",
                                   port=5432,
@@ -101,7 +105,7 @@ def get_pi_usage(start_time, end_time, dest_path):
     os.makedirs(dest_path, exist_ok=True)
 
     data_power = pd.DataFrame()
-    for pi in [17, 18, 19, 20, 21, 22, 23, 24, 41, 42, 43, 45, 46, 47, 48]:
+    for pi in pis:
         sql = f"SELECT time, memory_used, bytes_sent, bytes_recv, packets_recv, packets_sent, " \
               f"cpu0_user, cpu1_user, cpu2_user, cpu3_user, " \
               f"cpu0_freq , cpu1_freq, cpu2_freq, cpu3_freq " \

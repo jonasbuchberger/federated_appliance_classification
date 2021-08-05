@@ -80,19 +80,25 @@ def to_dict(samples: np.array) -> dict:
 
 
 if __name__ == '__main__':
-    samples = lh([[1.0, 10.0], [1.0, 10.0]], 50)
-    print(samples)
+    samples = lh([[0.1, 1.0], [0.1, 1.0], [0.1, 1.0]], 50)
+    rnd_samples = np.random.rand(50, 3)
     doe = to_dict(samples)
 
     import matplotlib.pyplot as plt
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.set_xlabel("Stride 1")
-    ax.set_ylabel("Stride 2")
-    ax.set_zlabel("Nodes fc1")
-
+    fig = plt.figure(figsize=(12, 5))
+    ax = fig.add_subplot(121, projection='3d')
+    ax.set_xlabel("Value 1")
+    ax.set_ylabel("Value 2")
+    ax.set_zlabel("Value 3")
+    ax.scatter3D(samples[:, 0], samples[:, 1], samples[:, 2], cmap="coolwarm")
+    ax = fig.add_subplot(122, projection='3d')
+    ax.set_xlabel("Value 1")
+    ax.set_ylabel("Value 2")
+    ax.set_zlabel("Value 3")
+    ax.scatter3D(rnd_samples[:, 0], rnd_samples[:, 1], rnd_samples[:, 2], cmap="coolwarm")
     # c = (stride_2 <= 0.5)
-    ax.scatter3D(samples[:, 0], samples[:, 1], cmap="coolwarm")
+
+    plt.tight_layout()
     plt.set_cmap("twilight_shifted")
     plt.show()

@@ -59,7 +59,7 @@ class Client:
         mode = config['epochs']['mode']
         criterion = config['criterion']
         optim = config['optim'](model.parameters(), **config['optim_kwargs'])
-        # scheduler = config['scheduler'](optim, **config['scheduler_kwargs'])
+        scheduler = config['scheduler'](optim, **config['scheduler_kwargs'])
         setting = config['setting']
 
         # Parameter assertions
@@ -103,18 +103,18 @@ class Client:
                     epoch_train_loss += loss.item()
                 epoch_train_loss /= len(train_loader)
 
-                # scheduler.step(epoch_train_loss)
+                scheduler.step()
 
             # Send trained model
             send_gather(model)
 
             model = receive_broadcast()
             lr = optim.param_groups[0]['lr']
-            # scheduler_dict = scheduler.state_dict()
+            scheduler_dict = scheduler.state_dict()
 
             optim = config['optim'](model.parameters(), lr, config['optim_kwargs']['weight_decay'])
-            # scheduler = config['scheduler'](optim, **config['scheduler_kwargs'])
-            # scheduler.load_state_dict(scheduler_dict)
+            scheduler = config['scheduler'](optim, **config['scheduler_kwargs'])
+            scheduler.load_state_dict(scheduler_dict)
 
         if config.get('transfer', False):
             # Freeze all weights except classifier

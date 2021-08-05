@@ -150,6 +150,12 @@ class Server:
 
         print('Finished Aggregating')
 
+        # Try to load the best saved checkpoint else test current model
+        try:
+            model.load_state_dict(torch.load(f"{log_path}/model.pth"))
+        except FileNotFoundError:
+            torch.save(model.state_dict(), f"{log_path}/model.pth")
+
         test(model, test_loader, **self.config)
 
         # Save train parameters and model architecture
