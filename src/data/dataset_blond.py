@@ -99,7 +99,13 @@ class BLOND(Dataset):
 
         # Filter for medal unit
         if medal_id is not None:
+            other_labels = self.labels[self.labels['Medal'] != medal_id]
             self.labels = self.labels[self.labels['Medal'] == medal_id]
+            if self.fold == 'test' or self.fold == 'val':
+                other_labels = other_labels[other_labels['fold'] == fold]
+                other_labels = other_labels.sample(n=len(self.labels), random_state=1000)
+                self.labels = self.labels.append(other_labels)
+
 
     def __len__(self):
         return len(self.labels)
@@ -136,8 +142,8 @@ class BLOND(Dataset):
 
 if __name__ == '__main__':
     path = os.path.join(ROOT_DIR, 'data')
-    for i in range(0, 10):
-        dataset = BLOND('train', path, use_synthetic=True, r_split=(i, 10))
-        print(len(dataset))
-        #print(dataset.labels['Type'].value_counts())
+
+    dataset = BLOND('val', path, use_synthetic=True, medal_id=1)
+    print(len(dataset))
+    print(dataset.labels)
 

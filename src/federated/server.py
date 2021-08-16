@@ -3,6 +3,7 @@ import json
 import torch
 from datetime import timedelta
 from tqdm import tqdm
+import pandas as pd
 import torch.distributed as dist
 from sklearn.metrics import precision_recall_fscore_support
 from src.utils import ROOT_DIR, SummaryWriter
@@ -115,20 +116,27 @@ class Server:
 
         best_f1 = 0
         early_stopping_val_loss = None
+        weight_df = None
         for i_agg in tqdm(range(0, aggregation_rounds)):
             # Gather trained models
             model_list = receive_gather(self.world_size)
 
             if self.config['weighted']:
                 self._update_weights(model_list, model, criterion, val_loader)
+
+                weight_df = pd.concat((weight_df, pd.Series(self.model_weights)), axis=1)
+                weight_df.columns = torch.arange(len(weight_df.columns)).numpy()
+                weight_df.T.to_csv(os.path.join(log_path, 'weight_log.csv'))
+
                 if torch.isnan(self.model_weights).any():
+                    print('Nan value in weighted model update')
                     break
 
             # AVG models
             model = weighted_model_average(model_list, self.model_weights)
 
             # Validate aggregated model
-            if i_agg % logging_factor == 0 or i_agg == aggregation_rounds - 1:
+            if (i_agg % logging_factor == 0 or i_agg == aggregation_rounds - 1) and logging_factor != -1:
                 epoch_val_loss, epoch_f1 = self._val(val_loader, model, criterion, i_agg, logger)
 
                 if best_f1 is None or best_f1 < epoch_f1:
@@ -217,7 +225,7 @@ class Server:
             for data in val_loader:
                 x, y_target = data
                 loss += criterion(model(x), y_target)
-            loss = loss / num_val_batches
+            loss /= num_val_batches
 
             for i, model_i in enumerate(model_list):
                 model_i = model_i.eval()
@@ -226,11 +234,12 @@ class Server:
                     for data in val_loader:
                         x, y_target = data
                         loss_i += criterion(model_i(x), y_target)
-                    loss_i = loss_i / num_val_batches
+                    loss_i /= num_val_batches
                     self.model_weights[i] = (loss - loss_i) / self._model_norm(model, model_i)
 
-        # self.model_weights[self.model_weights < 0] = 0
-        # self.model_weights = self.model_weights / torch.sum(self.model_weights)
+        self.model_weights[self.model_weights < 0] = 0
+        if self.model_weights.sum() > 0:
+            self.model_weights = self.model_weights / torch.sum(self.model_weights)
 
     def _model_norm(self, model_n, model_i):
         model_dict = model_n.state_dict()

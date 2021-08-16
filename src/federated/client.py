@@ -3,6 +3,7 @@ import datetime
 import torch.distributed as dist
 from src.utils import ROOT_DIR
 from src.models.experiment_utils import get_datalaoders, run_config
+from src.models.test import test
 from src.federated.federated_utils import receive_broadcast, send_gather
 
 
@@ -117,6 +118,7 @@ class Client:
             scheduler.load_state_dict(scheduler_dict)
 
         if config.get('transfer', False):
+
             # Freeze all weights except classifier
             for name, param in model.named_parameters():
                 if 'classifier' not in name:
@@ -138,3 +140,19 @@ class Client:
             run_config(os.path.join(ROOT_DIR, 'data'), **config)
 
             dist.barrier()
+
+        if config.get('local_test', False):
+
+            _, _, test_loader = get_datalaoders(path_to_data,
+                                                config['batch_size'],
+                                                use_synthetic=config['use_synthetic'],
+                                                features=config['features'],
+                                                medal_id=self.rank if setting == 'noniid' else None,
+                                                r_split=(self.rank - 1,
+                                                         self.world_size - 1) if setting == 'iid' else None,
+                                                class_dict=config['class_dict'])
+
+            config['experiment_name'] = os.path.join(config['experiment_name'], config['run_name'])
+            config['run_name'] = f'test_{self.rank}'
+
+            test(model, test_loader, **config)

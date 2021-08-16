@@ -13,6 +13,15 @@ then
   do
     ssh ubuntu@"${IP_ARR[i]}" "sudo service docker restart" &
   done
+elif [[ $1 == "local" ]]
+then
+    sudo docker network rm fednet
+    sudo docker network create --subnet=10.18.0.0/16 fednet
+  for i in "${!IP_ARR[@]}"
+  do
+    sudo docker run -v /home/ubuntu/federated_blond/:/opt/project --rm --init --ipc=host --network=fednet --ip=10.18.0.$(($i + 51)) federated_blond:Dockerfile python3 /opt/project/main_federated.py -r $(($i + 1)) -m 10.18.0.50 $WORLD_SIZE &
+  done
+  sudo docker run -v /home/ubuntu/federated_blond/:/opt/project --rm --init --ipc=host --network=fednet --ip=10.18.0.50 federated_blond:Dockerfile python3 /opt/project/main_federated.py -r 0 "$WORLD_SIZE"
 else
  sudo docker run -v /home/ubuntu/federated_blond/:/opt/project --network=host --rm --init --ipc=host federated_blond:Dockerfile python3 /opt/project/main_federated.py -r 0 "$WORLD_SIZE" &
 

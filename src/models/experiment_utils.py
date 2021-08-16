@@ -255,7 +255,7 @@ def get_datalaoders(path_to_data, batch_size, medal_id=None, use_synthetic=False
         val_loader (torch.utils.data.DataLoader)
         test_loader (torch.utils.data.DataLoader)
     """
-    num_workers = 2
+    num_workers = 0
     sampler = None
 
     train_set = BLOND(path_to_data=path_to_data,

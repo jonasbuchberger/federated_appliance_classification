@@ -110,7 +110,8 @@ def train(model, train_loader, val_loader, **config):
             if patience <= 0:
                 break
 
-        scheduler.step(epoch_f1)
+        #scheduler.step(epoch_f1)
+        scheduler.step()
 
     #logger.add_graph(model.cpu(), x.cpu()[0].unsqueeze(0))
     logger.add_hparams({'lr': config['optim_kwargs']['lr'],

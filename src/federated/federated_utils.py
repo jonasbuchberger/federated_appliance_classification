@@ -1,5 +1,6 @@
 import os
 import torch
+import math
 from torch import nn
 import torch.distributed as dist
 import pandas as pd
@@ -63,7 +64,8 @@ def weighted_model_average(model_list, weight_list=None):
     """
     model_dict = model_list[0].state_dict()
     if weight_list is not None:
-        weight_list = softmax(weight_list, dim=0)
+        if not math.isclose(weight_list.sum(), 1., abs_tol=0.01):
+            weight_list = softmax(weight_list, dim=0)
 
         for layer in model_dict.keys():
             model_dict[layer] = model_dict[layer] * weight_list[0]
