@@ -143,7 +143,7 @@ class BLOND(Dataset):
 if __name__ == '__main__':
     path = os.path.join(ROOT_DIR, 'data')
 
-    dataset = BLOND('val', path, use_synthetic=True, medal_id=1)
+    dataset = BLOND('all', path, use_synthetic=True)
     print(len(dataset))
     print(dataset.labels)
 

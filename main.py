@@ -20,15 +20,15 @@ if __name__ == '__main__':
 
     config = {
         'batch_size': 128,
-        'num_epochs': 50,
+        'num_epochs': 20,
         'seq_len': 190,
         'criterion': torch.nn.CrossEntropyLoss(),
         'optim': torch.optim.SGD,
-        'optim_kwargs': {'lr': 0.045, 'weight_decay': 0.001},
+        'optim_kwargs': {'lr': 0.052, 'weight_decay': 0.001},
         'scheduler': torch.optim.lr_scheduler.CosineAnnealingLR,
         'scheduler_kwargs': {'T_max': 50},
         # 'scheduler_kwargs': {'factor': 0.1, 'patience': 3, 'mode': 'max'},
-        'model_kwargs': {'name': 'LSTM', 'num_layers': 1, 'start_size': 23},
+        'model_kwargs': {'name': 'RESNET', 'num_layers': 4, 'start_size': 20},
         'early_stopping': 50,
         'class_dict': TYPE_CLASS,
         'features': None,
@@ -42,11 +42,11 @@ if __name__ == '__main__':
 
     feature_dict = {
         'train': [RandomAugment(),
-                  ACPower(),
-                  MFCC()],
+                  MFCC(),
+                  COT()],
         'val': [RandomAugment(p=0),
-                ACPower(),
-                MFCC()]
+                MFCC(),
+                COT()]
     }
 
     config['features'] = feature_dict
@@ -54,22 +54,22 @@ if __name__ == '__main__':
     start_time = start_time - timedelta(seconds=30)
 
     # Model per medal
-    for medal_id in range(1, 16):
-        config['features'] = feature_dict
-        config['experiment_name'] = f'medal_{medal_id}'
-        config['medal_id'] = medal_id
+    #for medal_id in range(1, 16):
+    #    config['features'] = feature_dict
+    #    config['experiment_name'] = f'medal_{medal_id}'
+    #    config['medal_id'] = medal_id
 
         #config['experiment_name'] = f'mfcc_librosa_{i}'
 
-        _, log_path = run_config(path_to_data, **config)
-        #run_k_fold(path_to_data, 10, **config)
+    _, log_path = run_config(path_to_data, **config)
+    #run_k_fold(path_to_data, 10, **config)
 
-        host = socket.gethostname()
-        if 'raspi' in host:
-            time.sleep(30)
-            end_time = datetime.now()
-            print('Retrieving Pi usage.')
-            get_pi_usage(start_time, end_time, os.path.join(log_path, 'pi_logs'), pis=[host[-2:]])
+    host = socket.gethostname()
+    if 'raspi' in host:
+        time.sleep(30)
+        end_time = datetime.now()
+        print('Retrieving Pi usage.')
+        get_pi_usage(start_time, end_time, os.path.join(log_path, 'pi_logs'), pis=[host[-2:]])
 
 
 
