@@ -3,7 +3,6 @@ import json
 import torch
 from datetime import timedelta
 from tqdm import tqdm
-import pandas as pd
 import torch.distributed as dist
 from sklearn.metrics import precision_recall_fscore_support
 from src.utils import ROOT_DIR, SummaryWriter
@@ -47,6 +46,7 @@ class Server:
 
         timeout = max([self.config['epochs']['local_steps'],
                        self.config.get('transfer_kwargs', {}).get('num_epochs', 0)])
+        timeout = 5
 
         dist.init_process_group(self.backend,
                                 rank=0,
@@ -56,6 +56,11 @@ class Server:
                                 )
 
     def _setup_experiment(self, config):
+        """ Setup for experimental setting
+
+        Args:
+            config (dict): Training configuration
+        """
 
         feature_string = '['
         for feature in config['features']['train']:
@@ -116,45 +121,36 @@ class Server:
 
         best_f1 = 0
         early_stopping_val_loss = None
-        weight_df = None
         for i_agg in tqdm(range(0, aggregation_rounds)):
             # Gather trained models
             model_list = receive_gather(self.world_size)
+            if self.config.get('weighted', False):
+                send_broadcast(model_list)
+            else:
+                # AVG models
+                model = weighted_model_average(model_list, self.model_weights)
 
-            if self.config['weighted']:
-                self._update_weights(model_list, model, criterion, val_loader)
+                # Validate aggregated model
+                if (i_agg % logging_factor == 0 or i_agg == aggregation_rounds - 1) and logging_factor != -1:
+                    epoch_val_loss, epoch_f1 = self._val(val_loader, model, criterion, i_agg, logger)
 
-                weight_df = pd.concat((weight_df, pd.Series(self.model_weights)), axis=1)
-                weight_df.columns = torch.arange(len(weight_df.columns)).numpy()
-                weight_df.T.to_csv(os.path.join(log_path, 'weight_log.csv'))
+                    if best_f1 is None or best_f1 < epoch_f1:
+                        torch.save(model.state_dict(), f"{log_path}/model.pth")
+                        best_f1 = epoch_f1
 
-                if torch.isnan(self.model_weights).any():
-                    print('Nan value in weighted model update')
-                    break
+                    # Early stopping
+                    if early_stopping is not None:
+                        if early_stopping_val_loss is not None and early_stopping_val_loss < epoch_val_loss:
+                            patience -= 1
+                        else:
+                            early_stopping_val_loss = epoch_val_loss
+                            patience = early_stopping
+                        if patience <= 0:
+                            dist.destroy_process_group()
+                            break
 
-            # AVG models
-            model = weighted_model_average(model_list, self.model_weights)
-
-            # Validate aggregated model
-            if (i_agg % logging_factor == 0 or i_agg == aggregation_rounds - 1) and logging_factor != -1:
-                epoch_val_loss, epoch_f1 = self._val(val_loader, model, criterion, i_agg, logger)
-
-                if best_f1 is None or best_f1 < epoch_f1:
-                    torch.save(model.state_dict(), f"{log_path}/model.pth")
-                    best_f1 = epoch_f1
-
-                if early_stopping is not None:
-                    if early_stopping_val_loss is not None and early_stopping_val_loss < epoch_val_loss:
-                        patience -= 1
-                    else:
-                        early_stopping_val_loss = epoch_val_loss
-                        patience = early_stopping
-                    if patience <= 0:
-                        dist.destroy_process_group()
-                        break
-
-            # Broadcast new model
-            send_broadcast(model)
+                # Broadcast new model
+                send_broadcast(model)
 
         print('Finished Aggregating')
 
@@ -184,6 +180,18 @@ class Server:
         return log_path
 
     def _val(self, val_loader, model, criterion, i_agg, logger):
+        """ Calculates the validation metrics of a model checkpoint
+
+        Args:
+            val_loader (dataloader): Validation dataloader
+            model (torch.nn.Module): Current global model
+            criterion (torch.nn): Loss function
+            i_agg (int): Current aggregation round
+            logger (torch.utils.tensorboard): Tensorboard logger
+
+        Returns:
+            (nn.Module): The new aggregated model
+        """
         num_correct = 0
         num_samples = 0
         y_target_list = []
@@ -217,38 +225,4 @@ class Server:
 
         return epoch_val_loss, epoch_f1
 
-    def _update_weights(self, model_list, model, criterion, val_loader):
-        num_val_batches = len(val_loader)
-        model = model.eval()
-        loss = 0
-        with torch.no_grad():
-            for data in val_loader:
-                x, y_target = data
-                loss += criterion(model(x), y_target)
-            loss /= num_val_batches
 
-            for i, model_i in enumerate(model_list):
-                model_i = model_i.eval()
-                with torch.no_grad():
-                    loss_i = 0
-                    for data in val_loader:
-                        x, y_target = data
-                        loss_i += criterion(model_i(x), y_target)
-                    loss_i /= num_val_batches
-                    self.model_weights[i] = (loss - loss_i) / self._model_norm(model, model_i)
-
-        self.model_weights[self.model_weights < 0] = 0
-        if self.model_weights.sum() > 0:
-            self.model_weights = self.model_weights / torch.sum(self.model_weights)
-
-    def _model_norm(self, model_n, model_i):
-        model_dict = model_n.state_dict()
-        layer_norms = []
-        for layer in model_dict.keys():
-            if 'num_batches_tracked' not in layer:
-                model_dict[layer] -= model_i.state_dict()[layer]
-
-                layer_norms.append(torch.linalg.norm(model_dict[layer]))
-
-        norm = torch.linalg.norm(torch.as_tensor(layer_norms)) + 1e-5
-        return norm

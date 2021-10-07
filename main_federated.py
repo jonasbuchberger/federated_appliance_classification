@@ -22,7 +22,7 @@ def run(rank, world_size, master_addr):
         config = {
             'setting': 'noniid',
             'batch_size': 128,
-            'epochs': {'agg_rounds': 100, 'local_steps': 1, 'mode': 'epoch'},
+            'epochs': {'agg_rounds': 100, 'local_steps': 4, 'mode': 'step'},
             'logging_factor': 1,
             'seq_len': 190,
             'criterion': torch.nn.CrossEntropyLoss(),

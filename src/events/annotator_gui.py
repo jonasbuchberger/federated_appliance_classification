@@ -435,10 +435,6 @@ def calibrate_offset(data, average_frequency):
 
 
 if __name__ == '__main__':
-    # path_to_data = "C:/Users/jonas/Documents/MATLAB/BLOND"
-    # path_to_log = "C:/Users/jonas/Documents/PyCharm/federated_blond/.old/appliance_log.json"
-    # path_to_preprocessed = "C:/Users/jonas/Documents/MATLAB/BLOND-Preprocessed"
-
     path_to_data = "/mnt/nilm/nilm/i13-dataset/BLOND/BLOND-50"
     path_to_log = "/mnt/nilm/nilm/i13-dataset/BLOND/appliance_log.json"
     path_to_preprocessed = "/mnt/nilm/temp/buchberger/BLOND-Preprocessed"

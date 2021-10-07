@@ -197,7 +197,6 @@ def init(l):
 
 
 if __name__ == '__main__':
-    # path_to_data = "C:/Users/jonas/Documents/MATLAB/BLOND"
     path_to_data = "/mnt/nilm/nilm/i13-dataset/BLOND/BLOND-50"
     dest_path = "/mnt/nilm/temp/buchberger/"
 

@@ -310,11 +310,3 @@ if __name__ == '__main__':
     pred = model3(x)
     print(pred.shape)
 
-    """
-    from sklearn.metrics import precision_recall_fscore_support
-
-    pred = [1, 2, 3, 4, 1, 2, 3, 4]
-    target = [1, 2, 3, 5, 1, 5, 3, 5]
-    _, _, f1, _ = precision_recall_fscore_support(target, pred, average='macro')
-    print(f1)
-    """

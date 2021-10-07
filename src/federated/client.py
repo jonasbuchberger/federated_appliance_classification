@@ -1,10 +1,12 @@
 import os
 import datetime
+import torch
+import pandas as pd
 import torch.distributed as dist
-from src.utils import ROOT_DIR
 from src.models.experiment_utils import get_datalaoders, run_config
 from src.models.test import test
-from src.federated.federated_utils import receive_broadcast, send_gather
+from src.federated.federated_utils import receive_broadcast, send_gather, weighted_model_average
+from src.utils import ROOT_DIR, SummaryWriter
 
 
 class Client:
@@ -27,12 +29,13 @@ class Client:
         self.backend = backend
         self.master_addr = master_addr
         self.master_port = master_port
+        self.model_weights = torch.ones(world_size - 2)
 
         if self.path_to_data is None:
             self.path_to_data = os.path.join(ROOT_DIR, 'data')
 
     def init_process(self):
-
+        # Setup for PyTorch connection
         os.environ['MASTER_ADDR'] = self.master_addr
         os.environ['MASTER_PORT'] = self.master_port
 
@@ -67,7 +70,7 @@ class Client:
         assert (setting == 'iid' or setting == 'noniid')
         assert (aggregation_rounds > 0 and local_steps > 0)
 
-        train_loader, _, _ = get_datalaoders(path_to_data,
+        train_loader, v, _ = get_datalaoders(path_to_data,
                                              config['batch_size'],
                                              use_synthetic=config['use_synthetic'],
                                              features=config['features'],
@@ -86,6 +89,18 @@ class Client:
         else:
             raise ValueError
 
+        # Prepare weight logging
+        if config.get('weighted', False):
+            weight_df = None
+            log_path = os.path.join(ROOT_DIR,
+                                    'models',
+                                    config['experiment_name'],
+                                    config.get('run_name', ''),
+                                    f'test_{self.rank}')
+            logger = SummaryWriter(log_path, filename_suffix='_train')
+            os.makedirs(log_path, exist_ok=True)
+
+        # Start local training
         for agg_i in range(0, aggregation_rounds):
 
             for epoch_l in range(0, local_epochs):
@@ -106,10 +121,45 @@ class Client:
 
                 scheduler.step()
 
-            # Send trained model
-            send_gather(model)
+            # Calculate federated model with FedFomo weighting
+            # https://arxiv.org/pdf/2012.08565.pdf
+            if config.get('weighted', False):
+                send_gather((self.rank, model))
+                model_list = receive_broadcast()
+                for model_i in model_list[:]:
+                    if model_i[0] == self.rank:
+                        model_list.remove(model_i)
 
-            model = receive_broadcast()
+                assert (len(model_list) == len(self.model_weights))
+                epoch_val_loss = self._update_weights(model_list, model, criterion, v)
+                model_list = [model_list[i][1] for i in torch.arange(len(model_list))[self.model_weights > 0]]
+                model_list = [model] + model_list
+
+                weight_df = pd.concat((weight_df, pd.Series(self.model_weights)), axis=1)
+                weight_df.columns = torch.arange(len(weight_df.columns)).numpy()
+                weight_df.T.to_csv(os.path.join(log_path, 'weight_log.csv'))
+
+                if len(model_list) > 1:
+                    model = weighted_model_average(model_list)
+
+                model_dict = model.state_dict()
+                for layer in model_dict.keys():
+                    model_layer = model_dict[layer][:]
+                    for i, (_, model_i) in enumerate(model_list):
+                        if self.model_weights[i] > 0:
+                            model_dict[layer] += self.model_weights[i] * (model_i.state_dict()[layer] - model_layer)
+                model.load_state_dict(model_dict)
+
+                # Log train and val losses
+                logger.add_scalar('Loss/Train', epoch_train_loss, agg_i)
+                logger.add_scalar('Loss/Validation', epoch_val_loss, agg_i)
+
+            # Normal unweighted local training
+            else:
+                send_gather(model)
+                model = receive_broadcast()
+
+            # Update learning rate scheduler and optimizer with new model weights
             lr = optim.param_groups[0]['lr']
             scheduler_dict = scheduler.state_dict()
 
@@ -117,6 +167,7 @@ class Client:
             scheduler = config['scheduler'](optim, **config['scheduler_kwargs'])
             scheduler.load_state_dict(scheduler_dict)
 
+        # Transfer learning on the final global federated model
         if config.get('transfer', False):
 
             # Freeze all weights except classifier
@@ -141,8 +192,8 @@ class Client:
 
             dist.barrier()
 
+        # Test final federated model on private test set
         if config.get('local_test', False):
-
             _, _, test_loader = get_datalaoders(path_to_data,
                                                 config['batch_size'],
                                                 use_synthetic=config['use_synthetic'],
@@ -152,7 +203,71 @@ class Client:
                                                          self.world_size - 1) if setting == 'iid' else None,
                                                 class_dict=config['class_dict'])
 
-            config['experiment_name'] = os.path.join(config['experiment_name'], config['run_name'])
+            config['experiment_name'] = os.path.join(config['experiment_name'], config.get('run_name', ''))
             config['run_name'] = f'test_{self.rank}'
 
             test(model, test_loader, **config)
+
+        if config.get('weighted', False):
+            logger.close()
+
+    def _update_weights(self, model_list, model, criterion, val_loader):
+        """ Updates the weight vector of each model.
+
+        Args:
+            model_list (list): List of received models
+            model (torch.nn.Module): Current client model
+            criterion (torch.nn): Loss function
+            val_loader (dataloader): Validation dataloader
+        Returns:
+            (float): The loss of the current model
+        """
+        num_val_batches = len(val_loader)
+        model = model.eval()
+        loss = 0
+
+        # Calculate loss of current model
+        with torch.no_grad():
+            for data in val_loader:
+                x, y_target = data
+                loss += criterion(model(x), y_target)
+            loss /= num_val_batches
+
+            # Calculate loss of each model in model_list
+            for i, (_, model_i) in enumerate(model_list):
+                model_i = model_i.eval()
+                with torch.no_grad():
+                    loss_i = 0
+                    for data in val_loader:
+                        x, y_target = data
+                        loss_i += criterion(model_i(x), y_target)
+                    loss_i /= num_val_batches
+                    self.model_weights[i] = (loss - loss_i) / self._model_norm(model, model_i)
+                self.model_weights[self.model_weights < 0] = 0
+
+        # Update weights
+        if self.model_weights.sum() > 0:
+            self.model_weights = self.model_weights / torch.sum(self.model_weights)
+        self.model_weights[torch.isnan(self.model_weights)] = 0
+
+        return loss
+
+    def _model_norm(self, model_n, model_i):
+        """ Calculates the norm of the difference of two models
+
+        Args:
+            model_n (nn.Module): Model one
+            model_n (nn.Module): Model two
+        Returns:
+            (float): Norm of the model layers
+        """
+        model_dict = model_n.state_dict()
+        layer_norms = []
+        for layer in model_dict.keys():
+            if 'num_batches_tracked' not in layer:
+                model_dict[layer] -= model_i.state_dict()[layer]
+
+                layer_norms.append(torch.linalg.norm(model_dict[layer]))
+
+        norm = torch.mean(torch.as_tensor(layer_norms)) + 1e-5
+        return norm

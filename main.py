@@ -36,7 +36,8 @@ if __name__ == '__main__':
         'use_synthetic': True,
     }
 
-    #for m in ['CNN1D', 'LSTM', 'RESNET', 'DENSE']:
+    # Runs complete hyperparameter, architecture and feature search
+    # for m in ['CNN1D', 'LSTM', 'RESNET', 'DENSE']:
     #    config['model_kwargs']['name'] = m
     #    run_experiment(path_to_data, **config)
 
@@ -48,21 +49,16 @@ if __name__ == '__main__':
                 MFCC(),
                 COT()]
     }
-
     config['features'] = feature_dict
+
+    # Runs k-fold experiment with given config
+    # run_k_fold(path_to_data, 10, **config)
+
+    # Runs single run with given config and logs performance on pis
     start_time = datetime.now()
     start_time = start_time - timedelta(seconds=30)
 
-    # Model per medal
-    #for medal_id in range(1, 16):
-    #    config['features'] = feature_dict
-    #    config['experiment_name'] = f'medal_{medal_id}'
-    #    config['medal_id'] = medal_id
-
-        #config['experiment_name'] = f'mfcc_librosa_{i}'
-
     _, log_path = run_config(path_to_data, **config)
-    #run_k_fold(path_to_data, 10, **config)
 
     host = socket.gethostname()
     if 'raspi' in host:

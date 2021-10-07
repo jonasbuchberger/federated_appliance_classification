@@ -94,9 +94,6 @@ def preprocess_file(storage_path, path_to_data, file, measurement_frequency=6400
 
 
 if __name__ == '__main__':
-    #path_to_data = "C:/Users/jonas/Documents/MATLAB/BLOND"
-    #storage_path = "C:/Users/jonas/Documents/MATLAB/BLOND-Preprocessed"
-
     path_to_data = "/mnt/nilm/nilm/i13-dataset/BLOND/BLOND-50"
     storage_path = "/mnt/nilm/temp/buchberger/BLOND-Preprocessed"
 
